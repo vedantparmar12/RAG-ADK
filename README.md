@@ -456,7 +456,7 @@ We welcome contributions! The modular architecture makes it easy to add new feat
 
 ```bash
 # Clone the repository
-git clone https://github.com/vedantparmar12/RAG-ADK/edit/advance-RAG
+git clone https://github.com/vedantparmar12/RAG-ADK.git
 cd adk-rag-agent-main
 
 # Install in development mode
