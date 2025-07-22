@@ -1,7 +1,3 @@
-"""
-RAG Tools package for interacting with Vertex AI RAG corpora.
-"""
-
 from .add_data import add_data
 from .create_corpus import create_corpus
 from .delete_corpus import delete_corpus
