@@ -1,40 +1,42 @@
-# Enhanced Vertex AI RAG Agent with ADK
+# Next-Gen RAG Agent: Hybrid Search + ColBERT + Smart Caching + Beautiful UI
 
-## 🚀 Advanced Retrieval-Augmented Generation System with Enterprise Features
+The most comprehensive Retrieval-Augmented Generation system built on Google Vertex AI with enterprise features
+
+## Advanced Retrieval-Augmented Generation System with Enterprise Features
 
 This enhanced version of the Vertex AI RAG Agent implements state-of-the-art RAG techniques, providing a production-ready system for building intelligent document Q&A applications with advanced retrieval capabilities, performance optimization, and a user-friendly interface.
 
-## 🎯 Key Features
+## Key Features
 
-### 🔍 Advanced Retrieval Capabilities
+### Advanced Retrieval Capabilities
 - **Hybrid Search Architecture**: Intelligently combines dense (semantic) and sparse (keyword) retrieval methods for optimal results
 - **ColBERT Integration**: Implements late-interaction neural retrieval for fine-grained document matching
 - **Multi-Strategy Retrieval**: Supports dense, sparse, hybrid, and ColBERT strategies with configurable parameters
 - **Semantic Reranking**: Uses Google's semantic-ranker model for improved result relevance
 - **Query Expansion**: Automatically expands queries with synonyms and related terms for better coverage
 
-### 📄 Intelligent Document Processing
+### Intelligent Document Processing
 - **Layout-Aware Parsing**: AI-powered document structure understanding for PDFs, Word docs, and more
 - **Smart Chunking**: Multiple chunking strategies including sliding window, semantic segmentation, and late chunking
 - **Multi-Format Support**: Handles PDFs, DOCX, TXT, HTML, and various cloud storage sources (GCS, Drive)
 - **Batch Processing**: Asynchronous document ingestion with progress tracking
 - **Metadata Preservation**: Maintains document structure and metadata throughout the pipeline
 
-### ⚡ Performance Optimization
+### Performance Optimization
 - **Multi-Level Caching**: Redis-based distributed cache with in-memory LRU fallback
 - **Context Pruning**: Intelligent context reduction achieving up to 80% token savings
 - **Attention-Based Pruning**: Uses attention scores to identify and retain most relevant content
 - **Parallel Processing**: Concurrent document processing and retrieval operations
 - **Token Optimization**: Smart token management for cost-effective LLM usage
 
-### 🛠️ Developer Experience
+### Developer Experience
 - **FastAPI REST API**: Clean, documented API endpoints for all operations
 - **Streamlit Web UI**: Interactive dashboard for easy system management
 - **A/B Testing Framework**: Built-in configuration comparison tools
 - **Comprehensive Monitoring**: Real-time performance metrics and analytics
 - **Error Handling**: Robust error handling with detailed feedback
 
-### 🔐 Enterprise Features
+### Enterprise Features
 - **Corpus Management**: Create and manage multiple document collections
 - **Access Control**: Corpus-level isolation for multi-tenant deployments
 - **Audit Logging**: Comprehensive query and operation logging
@@ -94,50 +96,50 @@ Access the API at `http://localhost:8000`
 adk web
 ```
 
-## 🖥️ Streamlit UI Guide
+## Streamlit UI Guide
 
 The Streamlit UI provides an intuitive interface for all RAG operations:
 
 ### UI Features
 
-1. **🏠 Home Dashboard**
+1. **Home Dashboard**
    - System status overview
    - Quick start guide
    - Feature highlights
    - Performance metrics
 
-2. **🔍 Query Interface**
+2. **Query Interface**
    - Natural language question input
    - Advanced retrieval options
    - Real-time results with confidence scores
    - Performance metrics display
    - Query history tracking
 
-3. **📚 Corpus Management**
+3. **Corpus Management**
    - Create new document collections
    - Configure indexing strategies
    - View corpus statistics
    - Manage multiple corpora
 
-4. **📄 Document Indexing**
+4. **Document Indexing**
    - Batch document upload
    - Support for GCS, Drive, and web URLs
    - CSV batch import
    - Processing progress tracking
 
-5. **📊 A/B Testing**
+5. **A/B Testing**
    - Compare different configurations
    - Performance benchmarking
    - Quality metrics comparison
    - Configuration optimization
 
-6. **💾 Cache Management**
+6. **Cache Management**
    - Cache performance monitoring
    - Hit/miss rate statistics
    - Cache invalidation controls
    - Memory usage tracking
 
-7. **📈 Analytics Dashboard**
+7. **Analytics Dashboard**
    - Query volume trends
    - Response time analytics
    - Confidence score distribution
@@ -236,7 +238,7 @@ POST http://localhost:8000/evaluate
 }
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 enhanced-vertex-rag/
@@ -265,7 +267,7 @@ enhanced-vertex-rag/
 4. **API Layer**: FastAPI endpoints for all operations
 5. **UI Layer**: Streamlit dashboard for user interaction
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 Configure the system via environment variables or `rag_agent/config.py`:
 
@@ -293,7 +295,7 @@ Configure the system via environment variables or `rag_agent/config.py`:
 - `GENERATION_MODEL`: LLM for generation (default: "gemini-2.0-flash")
 - `RERANKING_MODEL`: Reranking model (default: "semantic-ranker-512@latest")
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
 Based on extensive testing with technical documentation:
 
@@ -311,7 +313,7 @@ Based on extensive testing with technical documentation:
 - **Intelligent Caching**: Dramatically improves response times for common queries
 - **ColBERT Retrieval**: Provides fine-grained matching for complex queries
 
-## 🐳 Deployment
+## Deployment
 
 ### Docker Deployment
 
@@ -396,7 +398,7 @@ spec:
 4. **Security**: Add authentication/authorization layers
 5. **Scaling**: Use horizontal pod autoscaling based on load
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues and Solutions
 
@@ -441,7 +443,7 @@ docker run -d -p 6379:6379 redis:alpine
 4. **Enable context pruning**: Reduces token usage significantly
 5. **Monitor metrics**: Use the analytics dashboard to identify bottlenecks
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! The modular architecture makes it easy to add new features:
 
@@ -454,7 +456,7 @@ We welcome contributions! The modular architecture makes it easy to add new feat
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/vedantparmar12/RAG-ADK/edit/advance-RAG
 cd adk-rag-agent-main
 
 # Install in development mode
@@ -467,6 +469,6 @@ python -m pytest
 uvicorn main:app --reload
 ```
 
-## 📜 License
+## License
 
 This project extends the Google ADK framework and is subject to its licensing terms.
