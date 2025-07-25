@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Test setup for the Enhanced RAG system.
-Checks core functionality without requiring all dependencies.
-"""
-
 import sys
 import importlib
 
@@ -117,12 +111,12 @@ def main():
     print(f"\nTotal: {passed}/{total} tests passed")
     
     if passed == total:
-        print("\n✅ All tests passed! The system is ready.")
+        print("\n All tests passed! The system is ready.")
         print("\nTo start the enhanced RAG agent:")
         print("1. With ADK: adk web")
         print("2. With FastAPI: python3 main.py")
     else:
-        print("\n⚠️ Some tests failed. Please check the errors above.")
+        print("\n Some tests failed. Please check the errors above.")
         print("\nNote: Some advanced features may require additional dependencies:")
         print("- sentence-transformers (for embeddings)")
         print("- faiss-cpu (for vector search)")
