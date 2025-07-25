@@ -1,8 +1,3 @@
-"""
-Enhanced RAG Root Agent with sub-agents architecture.
-Orchestrates indexing, search, and generation agents.
-"""
-
 from google.adk import Agent
 from google.adk.agents import LlmAgent
 from typing import List, Dict, Any, Optional
