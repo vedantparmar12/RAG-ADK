@@ -1,7 +1,3 @@
-"""
-Tool for adding new data sources to a Vertex AI RAG corpus.
-"""
-
 import re
 from typing import List
 
