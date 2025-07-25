@@ -1,10 +1,3 @@
-"""
-Enhanced configuration settings for the RAG Agent.
-
-These settings are used by the various RAG tools and support advanced features.
-Vertex AI initialization is performed in the package's __init__.py
-"""
-
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
