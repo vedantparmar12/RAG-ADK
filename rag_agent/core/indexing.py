@@ -11,6 +11,8 @@ try:
 except ImportError:
     from .mock_components import MockSentenceTransformer as SentenceTransformer
     
+from .embeddings import EmbeddingManager, EmbeddingProvider, TaskType
+    
 try:
     from transformers import AutoTokenizer, AutoModel
     import torch
@@ -46,6 +48,7 @@ class HybridIndexer:
     
     def __init__(self, settings_obj: Optional[Any] = None):
         self.settings = settings_obj or settings
+        self.embedding_manager = EmbeddingManager()
         self.setup_models()
         self.indices = {}
         
@@ -140,17 +143,14 @@ class HybridIndexer:
     ) -> np.ndarray:
         """Generate dense embeddings for texts"""
         
-        embeddings = []
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            batch_embeddings = self.dense_model.encode(
-                batch,
-                normalize_embeddings=True,
-                show_progress_bar=False
-            )
-            embeddings.extend(batch_embeddings)
+        # Use embedding manager for flexibility
+        embeddings = self.embedding_manager.encode(
+            texts,
+            provider=self.embedding_manager.default_provider,
+            normalize=True
+        )
             
-        return np.array(embeddings)
+        return embeddings
     
     def generate_sparse_embeddings(
         self,
@@ -292,9 +292,15 @@ class CorpusManager:
         description: str,
         indexing_strategy: str = "hybrid",
         chunk_size: int = 512,
-        enable_colbert: bool = True
+        enable_colbert: bool = True,
+        embedding_provider: str = "sentence_transformers",
+        embedding_config: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Create a new corpus with specified configuration"""
+        
+        # Configure embedding provider
+        if embedding_config:
+            self._configure_embedding_provider(embedding_provider, embedding_config)
         
         # Create index
         corpus_id = f"corpus_{name}_{datetime.utcnow().timestamp()}"
@@ -307,11 +313,52 @@ class CorpusManager:
             "indexing_strategy": indexing_strategy,
             "chunk_size": chunk_size,
             "enable_colbert": enable_colbert,
+            "embedding_provider": embedding_provider,
+            "embedding_config": embedding_config or {},
             "created_at": datetime.utcnow().isoformat(),
             "index": index
         }
         
         return corpus
+    
+    def _configure_embedding_provider(self, provider: str, config: Dict[str, Any]):
+        """Configure the embedding provider for the indexer"""
+        from .embeddings import EmbeddingProvider, GeminiEmbedding, VertexAIEmbedding, SentenceTransformerEmbedding, TaskType
+        
+        if provider == "gemini":
+            from .rate_limiter import RateLimitTier
+            # Get rate limit tier from settings
+            tier_map = {
+                "free": RateLimitTier.FREE,
+                "tier_1": RateLimitTier.TIER_1,
+                "tier_2": RateLimitTier.TIER_2,
+                "tier_3": RateLimitTier.TIER_3
+            }
+            rate_tier = tier_map.get(self.settings.rate_limit_tier, RateLimitTier.FREE)
+            
+            model = GeminiEmbedding(
+                model_name=config.get("gemini_model", "gemini-embedding-001"),
+                task_type=TaskType(config.get("gemini_task_type", "RETRIEVAL_DOCUMENT")),
+                output_dimensionality=config.get("gemini_dimensionality", 768),
+                rate_limit_tier=rate_tier,
+                batch_size=self.settings.embedding_batch_size
+            )
+            self.indexer.embedding_manager.add_model(EmbeddingProvider.GEMINI, model)
+            self.indexer.embedding_manager.default_provider = EmbeddingProvider.GEMINI
+            
+        elif provider == "vertex_ai":
+            model = VertexAIEmbedding(
+                model_name=config.get("vertex_model", "text-embedding-005")
+            )
+            self.indexer.embedding_manager.add_model(EmbeddingProvider.VERTEX_AI, model)
+            self.indexer.embedding_manager.default_provider = EmbeddingProvider.VERTEX_AI
+            
+        elif provider == "sentence_transformers":
+            model = SentenceTransformerEmbedding(
+                model_name=f"sentence-transformers/{config.get('st_model', 'all-MiniLM-L6-v2')}"
+            )
+            self.indexer.embedding_manager.add_model(EmbeddingProvider.SENTENCE_TRANSFORMERS, model)
+            self.indexer.embedding_manager.default_provider = EmbeddingProvider.SENTENCE_TRANSFORMERS
     
     def get_config(self, corpus_id: str) -> Dict[str, Any]:
         """Get corpus configuration"""

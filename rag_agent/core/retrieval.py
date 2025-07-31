@@ -26,6 +26,9 @@ except ImportError:
 
 from ..config import settings
 from ..optimization.caching import RetrievalCache
+from .embeddings import EmbeddingManager, EmbeddingProvider, TaskType
+from .context_cache import context_cache_manager, CacheType
+from .reranking import HybridReranker
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +110,8 @@ class DenseRetriever:
     
     def __init__(self, settings_obj: Optional[Any] = None):
         self.settings = settings_obj or settings
+        self.embedding_manager = EmbeddingManager()
+        # Fallback to sentence transformers for dense retriever
         self.embedding_model = SentenceTransformer(
             'sentence-transformers/all-MiniLM-L6-v2'
         )
@@ -120,11 +125,26 @@ class DenseRetriever:
     ) -> List[Tuple[int, float, Dict]]:
         """Perform dense retrieval"""
         
-        # Generate query embedding
-        query_embedding = self.embedding_model.encode(
-            [query],
-            normalize_embeddings=True
-        )[0]
+        # Generate query embedding using embedding manager if available
+        try:
+            # For queries, use RETRIEVAL_QUERY task type if using Gemini
+            if self.embedding_manager.default_provider == EmbeddingProvider.GEMINI:
+                query_embedding = self.embedding_manager.encode(
+                    [query],
+                    task_type=TaskType.RETRIEVAL_QUERY,
+                    normalize=True
+                )[0]
+            else:
+                query_embedding = self.embedding_manager.encode(
+                    [query],
+                    normalize=True
+                )[0]
+        except:
+            # Fallback to direct model
+            query_embedding = self.embedding_model.encode(
+                [query],
+                normalize_embeddings=True
+            )[0]
         
         # Search in FAISS index
         scores, indices = index.search(
@@ -195,6 +215,9 @@ class HybridRetriever:
             self.cache = RetrievalCache(settings_obj)
         else:
             self.cache = None
+            
+        # Initialize reranker
+        self.reranker = HybridReranker()
             
         # Store indices
         self.indices = {}
@@ -271,12 +294,59 @@ class HybridRetriever:
             top_k
         )
         
-        # Rerank if enabled
+        # Apply advanced reranking if enabled
         if self.settings.enable_reranking:
-            combined_results = self._rerank_results(
-                query,
-                combined_results
-            )
+            # Get reranking strategies from settings
+            strategies = []
+            if self.settings.enable_coherence_reranking:
+                strategies.append("coherence")
+            if self.settings.enable_clustering:
+                strategies.append("clustering")
+            if self.settings.enable_diversity_reranking:
+                strategies.append("diversity")
+            
+            if strategies:
+                # Convert to format expected by reranker
+                docs_for_reranking = []
+                for result in combined_results:
+                    doc = {
+                        "doc_id": result.get("doc_id"),
+                        "text": result.get("text", ""),
+                        "score": result.get("score", 0.0),
+                        "metadata": result.get("metadata", {})
+                    }
+                    docs_for_reranking.append(doc)
+                
+                # Apply reranking
+                reranked = self.reranker.rerank(
+                    documents=docs_for_reranking,
+                    query=query,
+                    strategies=strategies,
+                    top_k=top_k,
+                    lambda_param=self.settings.diversity_lambda,
+                    coherence_weight=self.settings.coherence_weight,
+                    diversity_weight=self.settings.diversity_weight
+                )
+                
+                # Convert back to original format
+                combined_results = []
+                for doc in reranked:
+                    result = {
+                        "doc_id": doc["doc_id"],
+                        "score": doc["score"],
+                        "metadata": doc["metadata"],
+                        "text": doc["text"],
+                        "reranking_metadata": doc.get("reranking_metadata", {})
+                    }
+                    combined_results.append(result)
+                
+                logger.info(f"Applied {len(strategies)} reranking strategies")
+            else:
+                # Fallback to simple reranking
+                combined_results = self._rerank_results(
+                    query,
+                    combined_results
+                )
             
         # Cache results
         if use_cache and self.cache:
