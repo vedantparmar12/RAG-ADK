@@ -56,6 +56,17 @@ class CorpusRequest(BaseModel):
     enable_layout_parser: Optional[bool] = True
     enable_late_chunking: Optional[bool] = True
     enable_colbert: Optional[bool] = True
+    
+    # Embedding configuration
+    embedding_provider: Optional[str] = Field("sentence_transformers", pattern="^(gemini|vertex_ai|sentence_transformers|multimodal)$")
+    generation_model: Optional[str] = Field("gemini-2.0-flash")
+    
+    # Provider-specific options
+    gemini_model: Optional[str] = None
+    gemini_task_type: Optional[str] = None
+    gemini_dimensionality: Optional[int] = None
+    vertex_model: Optional[str] = None
+    st_model: Optional[str] = None
 
 class DocumentRequest(BaseModel):
     """Document addition request"""
@@ -151,12 +162,35 @@ async def create_corpus(request: CorpusRequest):
         raise HTTPException(status_code=503, detail="RAG system not available")
     
     try:
+        # Prepare embedding configuration
+        embedding_config = {}
+        if request.embedding_provider == "gemini":
+            embedding_config = {
+                "gemini_model": request.gemini_model,
+                "gemini_task_type": request.gemini_task_type,
+                "gemini_dimensionality": request.gemini_dimensionality
+            }
+        elif request.embedding_provider == "vertex_ai":
+            embedding_config = {
+                "vertex_model": request.vertex_model
+            }
+        elif request.embedding_provider == "sentence_transformers":
+            embedding_config = {
+                "st_model": request.st_model
+            }
+        
+        # Update generation model in settings if provided
+        if request.generation_model:
+            settings.generation_model = request.generation_model
+        
         result = await rag_system.create_corpus(
             corpus_name=request.name,
             description=request.description,
             indexing_strategy=request.indexing_strategy,
             chunk_size=request.chunk_size,
-            enable_colbert=request.enable_colbert
+            enable_colbert=request.enable_colbert,
+            embedding_provider=request.embedding_provider,
+            embedding_config=embedding_config
         )
         
         return result
@@ -215,6 +249,180 @@ async def get_cache_stats():
         return {"cache_enabled": False}
         
     return rag_system.cache.get_stats()
+
+@app.get("/rate-limits")
+async def get_rate_limit_status():
+    """Get current rate limit status for all models"""
+    
+    rate_limit_status = {}
+    
+    # Check if we have any Gemini embeddings configured
+    try:
+        from rag_agent.core.embeddings import embedding_manager, EmbeddingProvider
+        
+        if EmbeddingProvider.GEMINI in embedding_manager.models:
+            gemini_model = embedding_manager.models[EmbeddingProvider.GEMINI]
+            if hasattr(gemini_model, 'get_rate_limit_metrics'):
+                rate_limit_status["gemini_embeddings"] = gemini_model.get_rate_limit_metrics()
+        
+        # Add generation model rate limits if available
+        rate_limit_status["tier"] = settings.rate_limit_tier
+        rate_limit_status["batch_size"] = settings.embedding_batch_size
+        rate_limit_status["retry_config"] = {
+            "attempts": settings.rate_limit_retry_attempts,
+            "base_delay": settings.rate_limit_base_delay
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting rate limit status: {e}")
+        rate_limit_status["error"] = str(e)
+    
+    return rate_limit_status
+
+@app.get("/context-cache/stats")
+async def get_context_cache_stats():
+    """Get context cache statistics"""
+    
+    from rag_agent.core.context_cache import context_cache_manager
+    
+    if not context_cache_manager:
+        return {
+            "enabled": settings.enable_context_caching,
+            "status": "not_initialized",
+            "message": "Context cache manager not initialized"
+        }
+    
+    try:
+        stats = context_cache_manager.get_cache_statistics()
+        stats["enabled"] = True
+        stats["ttl_seconds"] = settings.context_cache_ttl
+        stats["min_tokens"] = settings.min_tokens_for_cache
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return {"error": str(e)}
+
+@app.post("/context-cache/create")
+async def create_context_cache(
+    corpus_id: str,
+    cache_type: str = "corpus_documents",
+    ttl_seconds: Optional[int] = None
+):
+    """Manually create a context cache"""
+    
+    from rag_agent.core.context_cache import context_cache_manager
+    
+    if not context_cache_manager:
+        raise HTTPException(status_code=503, detail="Context cache not available")
+    
+    # Implementation would depend on cache type
+    return {"message": "Cache creation endpoint - implement based on type"}
+
+@app.delete("/context-cache/{cache_id}")
+async def delete_context_cache(cache_id: str):
+    """Delete a specific context cache"""
+    
+    from rag_agent.core.context_cache import context_cache_manager
+    
+    if not context_cache_manager:
+        raise HTTPException(status_code=503, detail="Context cache not available")
+    
+    success = context_cache_manager.delete_cache(cache_id)
+    
+    if success:
+        return {"status": "success", "cache_id": cache_id}
+    else:
+        raise HTTPException(status_code=404, detail="Cache not found")
+
+@app.post("/context-cache/{cache_id}/update-ttl")
+async def update_cache_ttl(
+    cache_id: str,
+    ttl_seconds: Optional[int] = None,
+    expire_hours: Optional[int] = None
+):
+    """Update cache TTL"""
+    
+    from rag_agent.core.context_cache import context_cache_manager
+    from datetime import datetime, timedelta, timezone
+    
+    if not context_cache_manager:
+        raise HTTPException(status_code=503, detail="Context cache not available")
+    
+    if expire_hours:
+        new_expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
+        success = context_cache_manager.update_cache_ttl(
+            cache_id, new_expire_time=new_expire
+        )
+    elif ttl_seconds:
+        success = context_cache_manager.update_cache_ttl(
+            cache_id, new_ttl_seconds=ttl_seconds
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Provide either ttl_seconds or expire_hours")
+    
+    if success:
+        return {"status": "success", "cache_id": cache_id}
+    else:
+        raise HTTPException(status_code=404, detail="Cache not found or update failed")
+
+@app.post("/evaluate-ranking")
+async def evaluate_ranking(
+    query: str,
+    documents: List[Dict[str, Any]]
+):
+    """Evaluate the quality of document ranking"""
+    
+    from rag_agent.core.reranking import reranker
+    
+    if not documents:
+        raise HTTPException(status_code=400, detail="No documents provided")
+    
+    try:
+        # Evaluate ranking quality
+        metrics = reranker.evaluate_ranking(documents, query)
+        
+        # Add interpretation
+        quality_score = (
+            metrics.get("avg_coherence", 0) * 0.4 +
+            metrics.get("diversity", 0) * 0.3 +
+            metrics.get("topic_coverage", 0) * 0.3
+        )
+        
+        interpretation = {
+            "overall_quality": quality_score,
+            "quality_label": (
+                "Excellent" if quality_score > 0.8 else
+                "Good" if quality_score > 0.6 else
+                "Fair" if quality_score > 0.4 else
+                "Poor"
+            ),
+            "recommendations": []
+        }
+        
+        # Add recommendations
+        if metrics.get("avg_coherence", 0) < 0.5:
+            interpretation["recommendations"].append(
+                "Consider enabling coherence reranking for better document flow"
+            )
+        if metrics.get("diversity", 0) < 0.3:
+            interpretation["recommendations"].append(
+                "Enable diversity reranking to reduce redundancy"
+            )
+        if metrics.get("topic_coverage", 0) < 0.5:
+            interpretation["recommendations"].append(
+                "Consider clustering to improve topic coverage"
+            )
+        
+        return {
+            "metrics": metrics,
+            "interpretation": interpretation
+        }
+        
+    except Exception as e:
+        logger.error(f"Error evaluating ranking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/cache/invalidate/{corpus_id}")
 async def invalidate_cache(corpus_id: str):

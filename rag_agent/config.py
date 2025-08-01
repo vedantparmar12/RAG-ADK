@@ -23,8 +23,25 @@ class Settings(BaseSettings):
     
     # Model Settings
     embedding_model: str = Field(default="text-embedding-005", env="EMBEDDING_MODEL")
+    embedding_provider: str = Field(default="sentence_transformers", env="EMBEDDING_PROVIDER", pattern="^(gemini|vertex_ai|sentence_transformers|multimodal)$")
+    gemini_embedding_model: str = Field(default="gemini-embedding-001", env="GEMINI_EMBEDDING_MODEL")
+    gemini_output_dimensionality: int = Field(default=768, env="GEMINI_OUTPUT_DIM", ge=1, le=3072)
+    gemini_task_type: str = Field(default="RETRIEVAL_DOCUMENT", env="GEMINI_TASK_TYPE")
     generation_model: str = Field(default="gemini-2.0-flash", env="GENERATION_MODEL")
     reranking_model: str = Field(default="semantic-ranker-512@latest", env="RERANKING_MODEL")
+    
+    # Rate Limiting Settings
+    rate_limit_tier: str = Field(default="free", env="RATE_LIMIT_TIER", pattern="^(free|tier_1|tier_2|tier_3)$")
+    embedding_batch_size: int = Field(default=10, env="EMBEDDING_BATCH_SIZE", ge=1, le=100)
+    rate_limit_retry_attempts: int = Field(default=3, env="RATE_LIMIT_RETRY_ATTEMPTS", ge=1, le=10)
+    rate_limit_base_delay: float = Field(default=1.0, env="RATE_LIMIT_BASE_DELAY", ge=0.1, le=10.0)
+    
+    # Context Caching Settings
+    enable_context_caching: bool = Field(default=True, env="ENABLE_CONTEXT_CACHING")
+    context_cache_ttl: int = Field(default=3600, env="CONTEXT_CACHE_TTL", ge=300, le=86400)  # 5 min to 24 hours
+    min_tokens_for_cache: int = Field(default=1024, env="MIN_TOKENS_FOR_CACHE", ge=256, le=10000)
+    cache_corpus_documents: bool = Field(default=True, env="CACHE_CORPUS_DOCUMENTS")
+    cache_query_context: bool = Field(default=True, env="CACHE_QUERY_CONTEXT")
     
     # Indexing Configuration
     indexing_strategy: str = Field(default="hybrid", pattern="^(dense|sparse|hybrid)$")
@@ -40,6 +57,13 @@ class Settings(BaseSettings):
     enable_reranking: bool = Field(default=True)
     similarity_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     distance_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    
+    # Advanced Reranking Configuration
+    enable_coherence_reranking: bool = Field(default=True, env="ENABLE_COHERENCE_RERANKING")
+    enable_diversity_reranking: bool = Field(default=True, env="ENABLE_DIVERSITY_RERANKING")
+    coherence_weight: float = Field(default=0.3, env="COHERENCE_WEIGHT", ge=0.0, le=1.0)
+    diversity_weight: float = Field(default=0.2, env="DIVERSITY_WEIGHT", ge=0.0, le=1.0)
+    diversity_lambda: float = Field(default=0.5, env="DIVERSITY_LAMBDA", ge=0.0, le=1.0)
     
     # Performance Settings
     enable_caching: bool = Field(default=True)

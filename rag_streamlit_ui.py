@@ -174,6 +174,8 @@ with st.sidebar:
             "📄 Document Indexing",
             "📊 Evaluation & Testing",
             "💾 Cache Management",
+            "⚡ Rate Limits",
+            "🗄️ Context Cache",
             "📈 Analytics Dashboard"
         ]
     )
@@ -307,6 +309,37 @@ elif page == "🔍 Query Interface":
                 value=True,
                 help="Use advanced reranking model for better results"
             )
+            
+            if enable_reranking:
+                st.markdown("**Reranking Options**")
+                
+                col1_rerank, col2_rerank = st.columns(2)
+                
+                with col1_rerank:
+                    enable_coherence = st.checkbox(
+                        "Coherence Reranking",
+                        value=True,
+                        help="Improve document flow and readability"
+                    )
+                    
+                    enable_clustering = st.checkbox(
+                        "Document Clustering",
+                        value=False,
+                        help="Group similar documents together"
+                    )
+                
+                with col2_rerank:
+                    enable_diversity = st.checkbox(
+                        "Diversity (MMR)",
+                        value=True,
+                        help="Reduce redundancy in results"
+                    )
+                    
+                    reorder_strategy = st.selectbox(
+                        "Reorder By",
+                        ["relevance", "recency", "length", "source"],
+                        help="Final ordering strategy"
+                    )
     
     with tab2:
         col1, col2 = st.columns(2)
@@ -555,6 +588,78 @@ elif page == "📚 Corpus Management":
                     value=True,
                     help="Use neural retrieval for better accuracy"
                 )
+                
+                enable_context_cache = st.checkbox(
+                    "Enable Context Caching",
+                    value=True,
+                    help="Cache documents in Gemini API for faster repeated access"
+                )
+                
+                if enable_context_cache:
+                    cache_ttl_hours = st.slider(
+                        "Cache Duration (hours)",
+                        min_value=1,
+                        max_value=24,
+                        value=4,
+                        help="How long to keep documents cached"
+                    )
+            
+            # Add embedding configuration section
+            st.markdown("### 🔧 Embedding Configuration")
+            
+            col1_emb, col2_emb = st.columns(2)
+            
+            with col1_emb:
+                embedding_provider = st.selectbox(
+                    "Embedding Provider",
+                    ["sentence_transformers", "gemini", "vertex_ai", "multimodal"],
+                    help="Choose the embedding model provider"
+                )
+                
+                if embedding_provider == "gemini":
+                    gemini_model = st.selectbox(
+                        "Gemini Model",
+                        ["gemini-embedding-001"],
+                        help="Select Gemini embedding model"
+                    )
+                    
+                    gemini_task_type = st.selectbox(
+                        "Task Type",
+                        ["RETRIEVAL_DOCUMENT", "RETRIEVAL_QUERY", "SEMANTIC_SIMILARITY", 
+                         "CODE_RETRIEVAL_QUERY", "QUESTION_ANSWERING", "FACT_VERIFICATION"],
+                        help="Optimize embeddings for specific tasks"
+                    )
+                    
+                    gemini_dimensionality = st.selectbox(
+                        "Output Dimensionality",
+                        [768, 1536, 3072],
+                        help="Choose embedding dimension (768 recommended for most uses)"
+                    )
+                
+                elif embedding_provider == "vertex_ai":
+                    vertex_model = st.selectbox(
+                        "Vertex AI Model",
+                        ["text-embedding-005", "text-multilingual-embedding-002"],
+                        help="Select Vertex AI embedding model"
+                    )
+                
+                elif embedding_provider == "sentence_transformers":
+                    st_model = st.selectbox(
+                        "Sentence Transformer Model",
+                        ["all-MiniLM-L6-v2", "all-mpnet-base-v2", "all-distilroberta-v1"],
+                        help="Select open-source embedding model"
+                    )
+                
+                elif embedding_provider == "multimodal":
+                    st.info("Multimodal embeddings support text, images, and video (1408 dimensions)")
+            
+            with col2_emb:
+                # Model selection for generation
+                generation_model = st.selectbox(
+                    "Generation Model",
+                    ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "claude-3-opus", "claude-3-sonnet"],
+                    help="Select the model for answer generation"
+                )
             
             submitted = st.form_submit_button("Create Corpus", type="primary", use_container_width=True)
             
@@ -572,8 +677,27 @@ elif page == "📚 Corpus Management":
                         "chunk_overlap": chunk_overlap,
                         "enable_layout_parser": enable_layout_parser,
                         "enable_late_chunking": enable_late_chunking,
-                        "enable_colbert": enable_colbert
+                        "enable_colbert": enable_colbert,
+                        "embedding_provider": embedding_provider,
+                        "generation_model": generation_model,
+                        "enable_context_cache": enable_context_cache
                     }
+                    
+                    # Add cache configuration if enabled
+                    if enable_context_cache:
+                        corpus_data["cache_ttl_seconds"] = cache_ttl_hours * 3600
+                    
+                    # Add provider-specific configuration
+                    if embedding_provider == "gemini":
+                        corpus_data.update({
+                            "gemini_model": gemini_model,
+                            "gemini_task_type": gemini_task_type,
+                            "gemini_dimensionality": gemini_dimensionality
+                        })
+                    elif embedding_provider == "vertex_ai":
+                        corpus_data["vertex_model"] = vertex_model
+                    elif embedding_provider == "sentence_transformers":
+                        corpus_data["st_model"] = st_model
                     
                     with st.spinner("Creating corpus..."):
                         success, response = make_api_request("/corpus", "POST", corpus_data)
@@ -973,6 +1097,155 @@ elif page == "💾 Cache Management":
         with col2:
             st.info("💡 Invalidating cache will clear all cached queries for the specified corpus")
 
+elif page == "🗄️ Context Cache":
+    st.title("🗄️ Context Cache Management")
+    
+    # Fetch context cache stats
+    success, cache_stats = make_api_request("/context-cache/stats")
+    
+    if success:
+        # Display cache configuration
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            enabled = cache_stats.get("enabled", False)
+            st.metric("Cache Status", "Enabled" if enabled else "Disabled")
+        
+        with col2:
+            ttl = cache_stats.get("ttl_seconds", 3600)
+            ttl_hours = ttl / 3600
+            st.metric("Default TTL", f"{ttl_hours:.1f} hours")
+        
+        with col3:
+            min_tokens = cache_stats.get("min_tokens", 1024)
+            st.metric("Min Tokens", f"{min_tokens:,}")
+        
+        with col4:
+            total_caches = cache_stats.get("total_caches", 0)
+            st.metric("Active Caches", total_caches)
+        
+        st.markdown("---")
+        
+        # Cache statistics
+        if cache_stats.get("total_caches", 0) > 0:
+            st.markdown("### 📊 Cache Statistics")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric(
+                    "Total Cached Tokens",
+                    f"{cache_stats.get('total_cached_tokens', 0):,}"
+                )
+                
+                # Caches by type
+                st.markdown("#### Caches by Type")
+                for cache_type, count in cache_stats.get("caches_by_type", {}).items():
+                    st.write(f"- {cache_type.replace('_', ' ').title()}: {count}")
+            
+            with col2:
+                # Cost savings estimate
+                if cache_stats.get("total_cached_tokens", 0) > 0:
+                    st.markdown("#### 💰 Estimated Cost Savings")
+                    st.info("""
+                    Cost savings depend on:
+                    - Number of requests using the cache
+                    - Cache duration (TTL)
+                    - Token count
+                    
+                    Cached tokens cost ~75% less than regular tokens.
+                    """)
+            
+            # Expiring soon
+            expiring = cache_stats.get("expiring_soon", [])
+            if expiring:
+                st.warning(f"⚠️ {len(expiring)} cache(s) expiring soon!")
+                
+                with st.expander("View expiring caches"):
+                    for cache in expiring:
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        with col1:
+                            st.text(cache["cache_id"])
+                        with col2:
+                            st.text(f"{cache['expires_in_minutes']} min")
+                        with col3:
+                            if st.button("Extend", key=f"extend_{cache['cache_id']}"):
+                                # Call API to extend TTL
+                                success, _ = make_api_request(
+                                    f"/context-cache/{cache['cache_id']}/update-ttl",
+                                    "POST",
+                                    {"ttl_seconds": 3600}
+                                )
+                                if success:
+                                    st.success("Extended!")
+                                    st.rerun()
+        
+        else:
+            st.info("No active context caches. Caches are created automatically when processing documents.")
+        
+        # Cache management actions
+        st.markdown("### 🛠️ Cache Management")
+        
+        tab1, tab2 = st.tabs(["Settings", "Best Practices"])
+        
+        with tab1:
+            st.markdown("#### Cache Configuration")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.info("""
+                **Current Settings:**
+                - Context caching: **Enabled**
+                - Corpus caching: **Enabled**
+                - Query caching: **Enabled**
+                """)
+            
+            with col2:
+                st.warning("""
+                **Resource Usage:**
+                - Storage costs apply for cached tokens
+                - Longer TTLs increase storage costs
+                - Monitor expiring caches regularly
+                """)
+        
+        with tab2:
+            st.markdown("#### 💡 Context Caching Best Practices")
+            
+            st.markdown("""
+            **1. When to Use Context Caching**
+            - Documents accessed multiple times (chatbots, repeated analysis)
+            - Large corpus with frequent queries
+            - System prompts used across many requests
+            - Batch processing with shared context
+            
+            **2. Optimal Cache Duration**
+            - Short-lived (5-15 min): Query contexts, temporary analysis
+            - Medium (1-4 hours): Active document sets, session data
+            - Long-lived (4-24 hours): System prompts, reference documents
+            
+            **3. Cost Optimization**
+            - Cache content accessed >2 times for cost savings
+            - Monitor cache hit rates and adjust TTLs
+            - Delete unused caches to reduce storage costs
+            - Use appropriate token thresholds (min 1024 tokens)
+            
+            **4. Performance Tips**
+            - Pre-cache frequently used documents
+            - Group related content in single caches
+            - Use cache warming during off-peak hours
+            - Monitor token usage to stay within limits
+            """)
+        
+        # Refresh button
+        if st.button("🔄 Refresh Cache Stats"):
+            st.rerun()
+            
+    else:
+        st.error("Failed to fetch context cache statistics")
+        if "error" in cache_stats:
+            st.error(f"Error: {cache_stats['error']}")
+
 elif page == "📈 Analytics Dashboard":
     st.title("📈 Analytics Dashboard")
     
@@ -1038,6 +1311,111 @@ elif page == "📈 Analytics Dashboard":
         - Cache performance metrics
         - Retrieval strategy effectiveness
         """)
+
+elif page == "⚡ Rate Limits":
+    st.title("⚡ Rate Limit Monitoring")
+    
+    # Fetch rate limit status
+    success, rate_limit_data = make_api_request("/rate-limits")
+    
+    if success:
+        # Display current tier and configuration
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            tier = rate_limit_data.get("tier", "unknown")
+            tier_display = tier.replace("_", " ").title()
+            st.metric("Current Tier", tier_display)
+        
+        with col2:
+            st.metric("Batch Size", rate_limit_data.get("batch_size", "N/A"))
+        
+        with col3:
+            retry_config = rate_limit_data.get("retry_config", {})
+            st.metric("Retry Attempts", retry_config.get("attempts", "N/A"))
+        
+        st.markdown("---")
+        
+        # Gemini embeddings rate limits
+        if "gemini_embeddings" in rate_limit_data:
+            st.markdown("### 🔷 Gemini Embeddings")
+            
+            gemini_data = rate_limit_data["gemini_embeddings"]
+            
+            # Current usage metrics
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                rpm_util = gemini_data.get("utilization", {}).get("rpm_percent", 0)
+                st.metric(
+                    "Requests/Min Usage",
+                    f"{gemini_data.get('current_rpm', 0)}/{gemini_data.get('limits', {}).get('rpm', 0)}",
+                    f"{rpm_util:.1f}%"
+                )
+                st.progress(rpm_util / 100)
+            
+            with col2:
+                tpm_util = gemini_data.get("utilization", {}).get("tpm_percent", 0)
+                st.metric(
+                    "Tokens/Min Usage",
+                    f"{gemini_data.get('current_tpm', 0)}/{gemini_data.get('limits', {}).get('tpm', 0)}",
+                    f"{tpm_util:.1f}%"
+                )
+                st.progress(tpm_util / 100)
+            
+            with col3:
+                rpd_util = gemini_data.get("utilization", {}).get("rpd_percent", 0)
+                st.metric(
+                    "Daily Requests",
+                    f"{gemini_data.get('daily_requests', 0)}/{gemini_data.get('limits', {}).get('rpd', 0)}",
+                    f"{rpd_util:.1f}%"
+                )
+                st.progress(rpd_util / 100)
+        
+        # Rate limit tiers information
+        with st.expander("📊 Rate Limit Tiers", expanded=False):
+            st.markdown("""
+            | Tier | Requirements | Gemini Embedding Limits |
+            |------|--------------|------------------------|
+            | Free | Available to all | 100 RPM, 30K TPM, 1K RPD |
+            | Tier 1 | Billing enabled | 1K RPM, 1M TPM, 50K RPD |
+            | Tier 2 | $250+ spend | 2K RPM, 2M TPM, 100K RPD |
+            | Tier 3 | $1000+ spend | 4K RPM, 4M TPM, 200K RPD |
+            
+            **Legend:**
+            - RPM: Requests Per Minute
+            - TPM: Tokens Per Minute
+            - RPD: Requests Per Day
+            """)
+        
+        # Best practices
+        with st.expander("💡 Rate Limit Best Practices", expanded=False):
+            st.markdown("""
+            **1. Batch Processing**
+            - Group multiple texts into single requests
+            - Use the configured batch size efficiently
+            
+            **2. Caching**
+            - Enable caching to avoid redundant API calls
+            - Cache embeddings for frequently used texts
+            
+            **3. Error Handling**
+            - The system automatically retries with exponential backoff
+            - Monitor rate limit metrics to avoid hitting limits
+            
+            **4. Optimization Tips**
+            - Process documents during off-peak hours
+            - Use smaller embedding dimensions when possible
+            - Consider upgrading tier for higher limits
+            """)
+        
+        # Auto-refresh
+        if st.button("🔄 Refresh Metrics"):
+            st.rerun()
+            
+    else:
+        st.error("Failed to fetch rate limit data")
+        st.error(f"Error: {rate_limit_data.get('detail', rate_limit_data)}")
 
 # Footer
 st.markdown("---")

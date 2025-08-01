@@ -25,8 +25,12 @@ except ImportError:
     from .mock_components import MockSentenceTransformer as SentenceTransformer
 
 from ..config import settings
+from .context_cache import context_cache_manager, initialize_context_cache
 
 logger = logging.getLogger(__name__)
+
+# Initialize context cache on module load
+initialize_context_cache()
 
 @dataclass
 class Chunk:
@@ -341,19 +345,25 @@ class DocumentProcessor:
         corpus_id: str,
         uris: List[str],
         use_layout_parser: bool = True,
-        enable_late_chunking: bool = True
+        enable_late_chunking: bool = True,
+        create_context_cache: bool = True
     ) -> Dict[str, Any]:
-        """Process documents with advanced techniques"""
+        """Process documents with advanced techniques and optional caching"""
         
         results = {
             "processed_count": 0,
             "total_chunks": 0,
             "processing_time": 0,
-            "errors": []
+            "errors": [],
+            "cache_created": False,
+            "cache_id": None
         }
         
         import time
         start_time = time.time()
+        
+        all_chunks = []
+        all_texts = []
         
         for uri in uris:
             try:
@@ -370,6 +380,9 @@ class DocumentProcessor:
                     use_semantic=True
                 )
                 
+                all_chunks.extend(chunks)
+                all_texts.append(content)
+                
                 results["processed_count"] += 1
                 results["total_chunks"] += len(chunks)
                 
@@ -379,8 +392,35 @@ class DocumentProcessor:
                     "uri": uri,
                     "error": str(e)
                 })
+        
+        # Create context cache if enabled and documents were processed
+        if (create_context_cache and 
+            context_cache_manager and 
+            settings.cache_corpus_documents and
+            all_texts):
+            try:
+                cache_entry = context_cache_manager.create_corpus_cache(
+                    corpus_id=corpus_id,
+                    documents=all_texts,
+                    system_instruction=(
+                        f"You are analyzing documents from corpus '{corpus_id}'. "
+                        f"This corpus contains {len(all_texts)} documents with {len(all_chunks)} chunks. "
+                        "Use this information to answer questions accurately based on the content."
+                    ),
+                    ttl_seconds=settings.context_cache_ttl
+                )
+                
+                if cache_entry:
+                    results["cache_created"] = True
+                    results["cache_id"] = cache_entry.cache_id
+                    results["cached_tokens"] = cache_entry.token_count
+                    logger.info(f"Created context cache for corpus {corpus_id}: {cache_entry.cache_id}")
+                    
+            except Exception as e:
+                logger.error(f"Failed to create context cache: {e}")
                 
         results["processing_time"] = time.time() - start_time
+        results["chunks"] = all_chunks  # Store chunks for indexing
         return results
     
     def _load_document(self, uri: str) -> str:

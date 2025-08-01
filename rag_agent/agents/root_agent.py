@@ -11,6 +11,7 @@ from ..core.document_processor import DocumentProcessor
 from ..core.retrieval import HybridRetriever
 from ..optimization.context_pruning import ContextPruner
 from ..optimization.caching import RetrievalCache
+from ..core.context_cache import context_cache_manager, CacheType
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,9 @@ class EnhancedRAGRootAgent:
             description: str,
             indexing_strategy: str = "hybrid",
             chunk_size: int = 512,
-            enable_colbert: bool = True
+            enable_colbert: bool = True,
+            embedding_provider: str = "sentence_transformers",
+            embedding_config: Optional[Dict[str, Any]] = None
         ) -> Dict[str, Any]:
             """Create a new corpus with specified configuration"""
             
@@ -132,7 +135,9 @@ class EnhancedRAGRootAgent:
                     description=description,
                     indexing_strategy=indexing_strategy,
                     chunk_size=chunk_size,
-                    enable_colbert=enable_colbert
+                    enable_colbert=enable_colbert,
+                    embedding_provider=embedding_provider,
+                    embedding_config=embedding_config
                 )
                 
                 # Store index reference
@@ -143,6 +148,7 @@ class EnhancedRAGRootAgent:
                     "corpus_id": corpus["id"],
                     "configuration": {
                         "indexing_strategy": indexing_strategy,
+                        "embedding_provider": embedding_provider,
                         "chunk_size": chunk_size,
                         "enable_colbert": enable_colbert
                     }
