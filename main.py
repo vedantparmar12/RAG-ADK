@@ -1,8 +1,3 @@
-"""
-Enhanced Vertex AI RAG Agent with FastAPI interface.
-Run with: uvicorn main:app --reload
-"""
-
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
