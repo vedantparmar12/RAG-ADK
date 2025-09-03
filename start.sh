@@ -1,7 +1,8 @@
 #!/bin/bash
 
-echo "Starting RAG Agent Backend..."
-python api_server.py &
+echo "Starting Enhanced RAG Agent Backend with Advanced Features..."
+echo "Features included: Query Rewriting, Semantic Chunking, ColBERT, Citations, Multi-hop, Vector Quantization, Hierarchical Search, RAGAS Evaluation"
+python main.py &
 BACKEND_PID=$!
 
 echo "Starting React Frontend..."

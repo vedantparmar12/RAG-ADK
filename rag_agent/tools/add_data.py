@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 """
 Tool for adding new data sources to a RAG corpus.
 Supports both Vertex AI RAG and local Gemini API-based implementation.
 """
 
+=======
+>>>>>>> 8523973f83cde857f354e54e107ec63be4ee1d0b
 import re
 from typing import List
 

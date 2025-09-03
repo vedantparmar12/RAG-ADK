@@ -1,15 +1,19 @@
+<<<<<<< HEAD
 """
 Vertex AI RAG Agent
 
 A package for interacting with Google Gemini API for RAG capabilities.
 """
 
+=======
+>>>>>>> 8523973f83cde857f354e54e107ec63be4ee1d0b
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+
 load_dotenv()
 
+<<<<<<< HEAD
 # Check if we're using Gemini API or Vertex AI
 USE_VERTEX_AI = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "False").lower() == "true"
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
@@ -42,8 +46,19 @@ else:
         import google.generativeai as genai
         genai.configure(api_key=GOOGLE_API_KEY)
         print("Gemini API configured successfully")
+=======
+PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
+LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION")
+
+
+try:
+    if PROJECT_ID and LOCATION:
+        print(f"Initializing Vertex AI with project={PROJECT_ID}, location={LOCATION}")
+        vertexai.init(project=PROJECT_ID, location=LOCATION)
+        print("Vertex AI initialization successful")
+>>>>>>> 8523973f83cde857f354e54e107ec63be4ee1d0b
     else:
         print("Warning: No GOOGLE_API_KEY found. Please set it in your .env file")
 
-# Import agent after initialization is complete
+
 from . import agent
