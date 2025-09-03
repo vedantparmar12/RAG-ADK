@@ -1,1 +1,2 @@
-name: RagAgent
+name: rag_agent
+description: Vertex AI RAG Agent
