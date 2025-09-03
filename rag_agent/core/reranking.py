@@ -1,4 +1,334 @@
 """
+Advanced reranking and contextual compression for RAG.
+Implements cross-encoder reranking and sentence-level compression.
+"""
+
+import logging
+from typing import List, Dict, Any, Optional, Tuple
+import numpy as np
+import re
+from concurrent.futures import ThreadPoolExecutor
+
+logger = logging.getLogger(__name__)
+
+# Optional dependencies
+try:
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    logger.warning("sentence-transformers not available. Advanced reranking disabled.")
+
+try:
+    import nltk
+    from nltk.tokenize import sent_tokenize
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+    logger.warning("NLTK not available. Using basic sentence splitting.")
+
+
+class CrossEncoderReranker:
+    """Cross-encoder model for reranking retrieved chunks."""
+    
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-2-v2"):
+        self.model = None
+        self.model_name = model_name
+        
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                self.model = CrossEncoder(model_name)
+                logger.info(f"Loaded cross-encoder: {model_name}")
+            except Exception as e:
+                logger.error(f"Failed to load cross-encoder: {e}")
+    
+    def rerank(self, query: str, chunks: List[Dict[str, Any]], top_k: int = None) -> List[Dict[str, Any]]:
+        """Rerank chunks using cross-encoder model."""
+        if not self.model or not chunks:
+            return chunks[:top_k] if top_k else chunks
+        
+        try:
+            # Prepare query-chunk pairs
+            pairs = [(query, chunk['text']) for chunk in chunks]
+            
+            # Get cross-encoder scores
+            scores = self.model.predict(pairs)
+            
+            # Add scores to chunks and sort
+            for chunk, score in zip(chunks, scores):
+                chunk['rerank_score'] = float(score)
+            
+            # Sort by rerank score
+            reranked = sorted(chunks, key=lambda x: x.get('rerank_score', 0), reverse=True)
+            
+            logger.info(f"Reranked {len(chunks)} chunks using cross-encoder")
+            return reranked[:top_k] if top_k else reranked
+            
+        except Exception as e:
+            logger.error(f"Cross-encoder reranking failed: {e}")
+            return chunks[:top_k] if top_k else chunks
+
+
+class ContextualCompressor:
+    """Compress retrieved chunks by removing irrelevant sentences."""
+    
+    def __init__(self, similarity_threshold: float = 0.3, max_sentences: int = 3):
+        self.similarity_threshold = similarity_threshold
+        self.max_sentences = max_sentences
+        self.sentence_model = None
+        
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                # Use a fast sentence model for compression
+                self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("Loaded sentence model for contextual compression")
+            except Exception as e:
+                logger.error(f"Failed to load sentence model: {e}")
+    
+    def _split_into_sentences(self, text: str) -> List[str]:
+        """Split text into sentences."""
+        if NLTK_AVAILABLE:
+            try:
+                return sent_tokenize(text)
+            except:
+                pass
+        
+        # Fallback: simple regex-based splitting
+        sentences = re.split(r'[.!?]+', text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    def _compute_sentence_relevance(self, query: str, sentences: List[str]) -> List[float]:
+        """Compute relevance scores for sentences."""
+        if not self.sentence_model or not sentences:
+            return [1.0] * len(sentences)  # Return all sentences if no model
+        
+        try:
+            # Generate embeddings
+            query_emb = self.sentence_model.encode([query])
+            sentence_embs = self.sentence_model.encode(sentences)
+            
+            # Compute cosine similarities
+            similarities = np.dot(sentence_embs, query_emb.T).flatten()
+            return similarities.tolist()
+            
+        except Exception as e:
+            logger.error(f"Sentence relevance computation failed: {e}")
+            return [1.0] * len(sentences)
+    
+    def compress_chunk(self, query: str, chunk: Dict[str, Any]) -> Dict[str, Any]:
+        """Compress a single chunk by removing irrelevant sentences."""
+        original_text = chunk.get('text', '')
+        
+        if not original_text or not self.sentence_model:
+            return chunk
+        
+        try:
+            # Split into sentences
+            sentences = self._split_into_sentences(original_text)
+            
+            if len(sentences) <= self.max_sentences:
+                return chunk  # No compression needed
+            
+            # Compute relevance scores
+            relevance_scores = self._compute_sentence_relevance(query, sentences)
+            
+            # Select top sentences above threshold
+            sentence_scores = list(zip(sentences, relevance_scores))
+            
+            # Sort by relevance and keep top sentences
+            relevant_sentences = [
+                sent for sent, score in sorted(sentence_scores, key=lambda x: x[1], reverse=True)
+                if score >= self.similarity_threshold
+            ][:self.max_sentences]
+            
+            # If no sentences meet threshold, keep top ones anyway
+            if not relevant_sentences:
+                relevant_sentences = [sent for sent, _ in sentence_scores[:self.max_sentences]]
+            
+            # Reconstruct text maintaining original order
+            compressed_sentences = []
+            for sentence in sentences:
+                if sentence in relevant_sentences:
+                    compressed_sentences.append(sentence)
+            
+            compressed_text = '. '.join(compressed_sentences)
+            
+            # Create compressed chunk
+            compressed_chunk = chunk.copy()
+            compressed_chunk['text'] = compressed_text
+            compressed_chunk['original_text'] = original_text
+            compressed_chunk['compression_ratio'] = len(compressed_text) / len(original_text)
+            compressed_chunk['sentences_kept'] = len(compressed_sentences)
+            compressed_chunk['sentences_total'] = len(sentences)
+            
+            return compressed_chunk
+            
+        except Exception as e:
+            logger.error(f"Chunk compression failed: {e}")
+            return chunk
+    
+    def compress_results(self, query: str, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Compress multiple chunks in parallel."""
+        if not chunks or not self.sentence_model:
+            return chunks
+        
+        try:
+            # Use thread pool for parallel processing
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                compressed_chunks = list(executor.map(
+                    lambda chunk: self.compress_chunk(query, chunk),
+                    chunks
+                ))
+            
+            # Log compression statistics
+            total_original = sum(len(c.get('original_text', c.get('text', ''))) for c in compressed_chunks)
+            total_compressed = sum(len(c.get('text', '')) for c in compressed_chunks)
+            compression_ratio = total_compressed / max(total_original, 1)
+            
+            logger.info(f"Compressed {len(chunks)} chunks. Compression ratio: {compression_ratio:.2f}")
+            return compressed_chunks
+            
+        except Exception as e:
+            logger.error(f"Batch compression failed: {e}")
+            return chunks
+
+
+class QueryEnhancer:
+    """Enhance queries with expansion and rewriting techniques."""
+    
+    def __init__(self):
+        self.expansion_cache = {}
+    
+    def expand_query(self, query: str) -> List[str]:
+        """Expand query with synonyms and related terms."""
+        # Simple implementation - can be enhanced with word2vec, WordNet, etc.
+        expansions = [query]
+        
+        # Add common synonyms/variations
+        expansions.extend(self._get_synonyms(query))
+        
+        return list(set(expansions))  # Remove duplicates
+    
+    def _get_synonyms(self, query: str) -> List[str]:
+        """Get basic synonyms for query terms."""
+        # Basic synonym mapping - in production, use WordNet or word2vec
+        synonym_map = {
+            'fast': ['quick', 'rapid', 'speedy'],
+            'good': ['excellent', 'great', 'fine'],
+            'bad': ['poor', 'terrible', 'awful'],
+            'big': ['large', 'huge', 'massive'],
+            'small': ['tiny', 'little', 'mini'],
+            # Add more as needed
+        }
+        
+        synonyms = []
+        for word in query.lower().split():
+            if word in synonym_map:
+                synonyms.extend(synonym_map[word])
+        
+        return [query.replace(word, syn) for word in query.split() for syn in synonym_map.get(word.lower(), [])]
+    
+    def rewrite_query_hyde(self, query: str, model_client) -> str:
+        """Generate hypothetical document using HyDE technique."""
+        try:
+            hyde_prompt = f"""Write a short, factual passage that would answer this question: {query}
+            
+Make it informative and specific. Do not include the question itself.
+Passage:"""
+            
+            if hasattr(model_client, 'generate_completion'):
+                hypothetical_doc = model_client.generate_completion(
+                    hyde_prompt,
+                    model_client.config.generation_model if hasattr(model_client, 'config') else "llama3.2",
+                    temperature=0.3,
+                    max_tokens=150
+                )
+                
+                if hypothetical_doc:
+                    # Combine original query with hypothetical document
+                    return f"{query} {hypothetical_doc.strip()}"
+            
+        except Exception as e:
+            logger.error(f"HyDE query rewriting failed: {e}")
+        
+        return query
+
+
+class RetrievalOptimizer:
+    """Main class orchestrating advanced retrieval optimizations."""
+    
+    def __init__(self, enable_reranking: bool = True, enable_compression: bool = True,
+                 enable_query_enhancement: bool = True):
+        self.enable_reranking = enable_reranking
+        self.enable_compression = enable_compression
+        self.enable_query_enhancement = enable_query_enhancement
+        
+        # Initialize components
+        self.reranker = CrossEncoderReranker() if enable_reranking else None
+        self.compressor = ContextualCompressor() if enable_compression else None
+        self.query_enhancer = QueryEnhancer() if enable_query_enhancement else None
+    
+    def optimize_retrieval(self, query: str, chunks: List[Dict[str, Any]], 
+                          top_k: int = None, model_client=None) -> List[Dict[str, Any]]:
+        """Apply full retrieval optimization pipeline."""
+        if not chunks:
+            return chunks
+        
+        original_count = len(chunks)
+        
+        # Step 1: Rerank with cross-encoder
+        if self.reranker and self.enable_reranking:
+            chunks = self.reranker.rerank(query, chunks, top_k=(top_k * 3) if top_k else None)
+        
+        # Step 2: Compress chunks contextually
+        if self.compressor and self.enable_compression:
+            chunks = self.compressor.compress_results(query, chunks)
+        
+        # Step 3: Final selection
+        final_chunks = chunks[:top_k] if top_k else chunks
+        
+        logger.info(f"Optimized retrieval: {original_count} → {len(final_chunks)} chunks")
+        return final_chunks
+    
+    def enhance_query(self, query: str, model_client=None) -> str:
+        """Enhance query with expansion and rewriting."""
+        if not self.query_enhancer or not self.enable_query_enhancement:
+            return query
+        
+        # Apply HyDE if model client available
+        if model_client:
+            enhanced_query = self.query_enhancer.rewrite_query_hyde(query, model_client)
+            logger.info(f"Enhanced query with HyDE: {len(query)} → {len(enhanced_query)} chars")
+            return enhanced_query
+        
+        return query
+
+
+# Factory functions
+def create_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-2-v2") -> Optional[CrossEncoderReranker]:
+    """Create cross-encoder reranker."""
+    if not SENTENCE_TRANSFORMERS_AVAILABLE:
+        logger.warning("sentence-transformers not available for reranking")
+        return None
+    
+    return CrossEncoderReranker(model_name)
+
+
+def create_compressor(similarity_threshold: float = 0.3, max_sentences: int = 3) -> Optional[ContextualCompressor]:
+    """Create contextual compressor."""
+    if not SENTENCE_TRANSFORMERS_AVAILABLE:
+        logger.warning("sentence-transformers not available for compression")
+        return None
+    
+    return ContextualCompressor(similarity_threshold, max_sentences)
+
+
+def create_retrieval_optimizer(enable_reranking: bool = True, enable_compression: bool = True, 
+                              enable_query_enhancement: bool = True) -> RetrievalOptimizer:
+    """Create full retrieval optimizer."""
+    return RetrievalOptimizer(enable_reranking, enable_compression, enable_query_enhancement)
+
+"""
 Advanced re-ranking module with coherence scoring, clustering, and document transformers.
 """
 

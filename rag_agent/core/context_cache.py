@@ -51,7 +51,7 @@ class GeminiContextCache:
         self,
         default_ttl_seconds: int = 3600,  # 1 hour default
         min_tokens_for_cache: int = 1024,  # Minimum tokens to cache
-        cache_model: str = "models/gemini-2.0-flash-001"
+        cache_model: str = "models/gemini-1.5-flash-002"
     ):
         if not GENAI_AVAILABLE:
             raise ImportError("Google GenAI library required for context caching")

@@ -59,7 +59,7 @@ class CorpusRequest(BaseModel):
     
     # Embedding configuration
     embedding_provider: Optional[str] = Field("sentence_transformers", pattern="^(gemini|vertex_ai|sentence_transformers|multimodal)$")
-    generation_model: Optional[str] = Field("gemini-2.0-flash")
+    generation_model: Optional[str] = Field("gemini-1.5-flash")
     
     # Provider-specific options
     gemini_model: Optional[str] = None

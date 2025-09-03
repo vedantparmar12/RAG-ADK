@@ -10,7 +10,11 @@ load_dotenv()
 class Settings(BaseSettings):
     """Enhanced RAG Configuration Settings"""
     
-    # Google Cloud Settings
+    # API Configuration
+    google_api_key: Optional[str] = Field(default=os.environ.get("GOOGLE_API_KEY"), env="GOOGLE_API_KEY")
+    use_vertex_ai: bool = Field(False, env="GOOGLE_GENAI_USE_VERTEXAI")
+    
+    # Google Cloud Settings (for Vertex AI mode)
     project_id: str = Field(
         default=os.environ.get("GOOGLE_CLOUD_PROJECT", "charming-module-240007"),
         env="GOOGLE_CLOUD_PROJECT"
@@ -19,7 +23,6 @@ class Settings(BaseSettings):
         default=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
         env="GOOGLE_CLOUD_LOCATION"
     )
-    use_vertex_ai: bool = Field(True, env="GOOGLE_GENAI_USE_VERTEXAI")
     
     # Model Settings
     embedding_model: str = Field(default="text-embedding-005", env="EMBEDDING_MODEL")
@@ -27,7 +30,7 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = Field(default="gemini-embedding-001", env="GEMINI_EMBEDDING_MODEL")
     gemini_output_dimensionality: int = Field(default=768, env="GEMINI_OUTPUT_DIM", ge=1, le=3072)
     gemini_task_type: str = Field(default="RETRIEVAL_DOCUMENT", env="GEMINI_TASK_TYPE")
-    generation_model: str = Field(default="gemini-2.0-flash", env="GENERATION_MODEL")
+    generation_model: str = Field(default="deepseek-coder", env="GENERATION_MODEL")
     reranking_model: str = Field(default="semantic-ranker-512@latest", env="RERANKING_MODEL")
     
     # Rate Limiting Settings
@@ -82,6 +85,15 @@ class Settings(BaseSettings):
     # Redis Configuration (for caching)
     redis_host: str = Field(default="localhost", env="REDIS_HOST")
     redis_port: int = Field(default=6379, env="REDIS_PORT")
+    
+    # Qdrant Configuration (Vector Database)
+    qdrant_host: str = Field(default="localhost", env="QDRANT_HOST")
+    qdrant_port: int = Field(default=6333, env="QDRANT_PORT")
+    qdrant_url: str = Field(default="http://localhost:6333", env="QDRANT_URL")
+    qdrant_api_key: Optional[str] = Field(default=None, env="QDRANT_API_KEY")
+    qdrant_collection_prefix: str = Field(default="rag_corpus", env="QDRANT_COLLECTION_PREFIX")
+    qdrant_timeout: float = Field(default=60.0, env="QDRANT_TIMEOUT")
+    qdrant_batch_size: int = Field(default=100, env="QDRANT_BATCH_SIZE", ge=1, le=1000)
     
     # Document AI Configuration
     layout_processor_id: Optional[str] = Field(default=None, env="LAYOUT_PROCESSOR_ID")

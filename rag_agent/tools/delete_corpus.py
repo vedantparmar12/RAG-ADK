@@ -1,10 +1,11 @@
 """
-Tool for deleting a Vertex AI RAG corpus when it's no longer needed.
+Tool for deleting a RAG corpus when it's no longer needed.
+Supports both Vertex AI RAG and local Gemini API-based implementation.
 """
 
 from google.adk.tools.tool_context import ToolContext
-from vertexai import rag
 
+from ..config import settings
 from .utils import check_corpus_exists, get_corpus_resource_name
 
 
@@ -14,7 +15,7 @@ def delete_corpus(
     tool_context: ToolContext,
 ) -> dict:
     """
-    Delete a Vertex AI RAG corpus when it's no longer needed.
+    Delete a RAG corpus when it's no longer needed.
     Requires confirmation to prevent accidental deletion.
 
     Args:
@@ -26,14 +27,6 @@ def delete_corpus(
     Returns:
         dict: Status information about the deletion operation
     """
-    # Check if corpus exists
-    if not check_corpus_exists(corpus_name, tool_context):
-        return {
-            "status": "error",
-            "message": f"Corpus '{corpus_name}' does not exist",
-            "corpus_name": corpus_name,
-        }
-
     # Check if deletion is confirmed
     if not confirm:
         return {
@@ -41,27 +34,88 @@ def delete_corpus(
             "message": "Deletion requires explicit confirmation. Set confirm=True to delete this corpus.",
             "corpus_name": corpus_name,
         }
+    
+    # Use local implementation if not using Vertex AI
+    if not settings.use_vertex_ai:
+        from ..core.local_rag_store import get_local_rag_store
+        
+        store = get_local_rag_store()
+        
+        # Check if corpus exists
+        corpus = store.get_corpus(corpus_name)
+        if not corpus:
+            return {
+                "status": "error",
+                "message": f"Corpus '{corpus_name}' does not exist",
+                "corpus_name": corpus_name,
+            }
+        
+        try:
+            # Delete the corpus
+            success = store.delete_corpus(corpus_name)
+            
+            if success:
+                # Remove from state by setting to False
+                state_key = f"corpus_exists_{corpus_name}"
+                if state_key in tool_context.state:
+                    tool_context.state[state_key] = False
+                
+                return {
+                    "status": "success",
+                    "message": f"Successfully deleted corpus '{corpus_name}'",
+                    "corpus_name": corpus_name,
+                    "mode": "local",
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Failed to delete corpus '{corpus_name}'",
+                    "corpus_name": corpus_name,
+                    "mode": "local",
+                }
+                
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error deleting corpus: {str(e)}",
+                "corpus_name": corpus_name,
+                "mode": "local",
+            }
+    
+    # Original Vertex AI implementation
+    else:
+        from vertexai import rag
+        
+        # Check if corpus exists
+        if not check_corpus_exists(corpus_name, tool_context):
+            return {
+                "status": "error",
+                "message": f"Corpus '{corpus_name}' does not exist",
+                "corpus_name": corpus_name,
+            }
 
-    try:
-        # Get the corpus resource name
-        corpus_resource_name = get_corpus_resource_name(corpus_name)
+        try:
+            # Get the corpus resource name
+            corpus_resource_name = get_corpus_resource_name(corpus_name)
 
-        # Delete the corpus
-        rag.delete_corpus(corpus_resource_name)
+            # Delete the corpus
+            rag.delete_corpus(corpus_resource_name)
 
-        # Remove from state by setting to False
-        state_key = f"corpus_exists_{corpus_name}"
-        if state_key in tool_context.state:
-            tool_context.state[state_key] = False
+            # Remove from state by setting to False
+            state_key = f"corpus_exists_{corpus_name}"
+            if state_key in tool_context.state:
+                tool_context.state[state_key] = False
 
-        return {
-            "status": "success",
-            "message": f"Successfully deleted corpus '{corpus_name}'",
-            "corpus_name": corpus_name,
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Error deleting corpus: {str(e)}",
-            "corpus_name": corpus_name,
-        }
+            return {
+                "status": "success",
+                "message": f"Successfully deleted corpus '{corpus_name}'",
+                "corpus_name": corpus_name,
+                "mode": "vertex_ai",
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error deleting corpus: {str(e)}",
+                "corpus_name": corpus_name,
+                "mode": "vertex_ai",
+            }
