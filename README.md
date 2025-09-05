@@ -1,415 +1,684 @@
-# Next-Gen RAG Agent: Hybrid Search + ColBERT + Smart Caching + Beautiful UI
+# RAG-ADK: Advanced Retrieval-Augmented Generation Development Kit
 
-The most comprehensive Retrieval-Augmented Generation system built on Google Vertex AI with enterprise features
+## Table of Contents
 
-## Advanced Retrieval-Augmented Generation System with Enterprise Features
+- [Overview](#overview)
+- [Features](#features) 
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Installation & Setup](#installation--setup)
+- [Configuration](#configuration)
+- [Core Components](#core-components)
+- [API Reference](#api-reference)
+- [Frontend Interface](#frontend-interface)
+- [Examples & Usage](#examples--usage)
+- [Optimization Features](#optimization-features)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Dependencies](#dependencies)
+- [Contributing](#contributing)
+- [License](#license)
 
-This enhanced version of the Vertex AI RAG Agent implements state-of-the-art RAG techniques, providing a production-ready system for building intelligent document Q&A applications with advanced retrieval capabilities, performance optimization, and a user-friendly interface.
+## Overview
 
-### 🆕 Latest Features (v2.0)
-- **Multi-Provider Embeddings**: Support for Gemini, Vertex AI, and Sentence Transformers
-- **Context Caching**: Gemini API caching for 75% cost reduction on repeated queries
-- **Advanced Reranking**: Coherence scoring, clustering, and diversity optimization
-- **Rate Limiting**: Intelligent API rate management with automatic retry
-- **Multimodal Support**: Handle text, images, and video content
+RAG-ADK (Retrieval-Augmented Generation - Advanced Development Kit) is a comprehensive, production-ready framework for building sophisticated RAG (Retrieval-Augmented Generation) applications. This toolkit provides advanced features including multi-modal processing, hierarchical search, semantic caching, and intelligent reranking to deliver high-performance AI-powered document retrieval and question-answering systems.
 
-## 🎯 Key Features
+### Key Capabilities
 
+- **Advanced RAG Pipeline**: Complete end-to-end retrieval-augmented generation workflow
+- **Multi-Modal Support**: Process text, images, and other document types
+- **Intelligent Caching**: Context-aware semantic caching and rate limiting
+- **Hierarchical Search**: Multi-hop retrieval with advanced query decomposition
+- **Real-time Processing**: Fast, scalable document processing and indexing
+- **Production Ready**: Comprehensive testing, optimization, and deployment tools
 
-### Advanced Retrieval Capabilities
-- **Hybrid Search Architecture**: Intelligently combines dense (semantic) and sparse (keyword) retrieval methods for optimal results
-- **ColBERT Integration**: Implements late-interaction neural retrieval for fine-grained document matching
-- **Multi-Strategy Retrieval**: Supports dense, sparse, hybrid, and ColBERT strategies with configurable parameters
-- **Advanced Reranking Suite**:
-  - **Coherence Reranking**: Ensures natural document flow using cross-encoder models
-  - **Document Clustering**: Groups semantically similar content (K-means/DBSCAN)
-  - **Diversity Optimization**: MMR algorithm reduces redundancy
-  - **Custom Reordering**: Sort by relevance, recency, length, or source
-- **Query Expansion**: Automatically expands queries with synonyms and related terms for better coverage
+## Features
 
-### Intelligent Document Processing
-- **Layout-Aware Parsing**: AI-powered document structure understanding for PDFs, Word docs, and more
-- **Smart Chunking**: Multiple chunking strategies including sliding window, semantic segmentation, and late chunking
-- **Multi-Format Support**: Handles PDFs, DOCX, TXT, HTML, and various cloud storage sources (GCS, Drive)
-- **Batch Processing**: Asynchronous document ingestion with progress tracking
-- **Metadata Preservation**: Maintains document structure and metadata throughout the pipeline
+### Core Features
+- **Semantic Search**: Advanced vector-based document retrieval using state-of-the-art embeddings
+- **Multi-Modal Processing**: Handle text, PDF, images, and structured documents
+- **Intelligent Reranking**: Multiple reranking strategies including ColBERT and cross-encoder models
+- **Context Caching**: Semantic-aware caching system to reduce API calls and improve performance
+- **Query Optimization**: Query decomposition, rewriting, and routing for better results
+- **Session Management**: Persistent conversation context and memory management
 
-### Performance Optimization
-- **Multi-Level Caching**: Redis-based distributed cache with in-memory LRU fallback
-- **Gemini Context Caching**: Cache large documents for 75% cost reduction
-- **Rate Limit Management**: Intelligent request batching and retry logic
-- **Context Pruning**: Intelligent context reduction achieving up to 80% token savings
-- **Attention-Based Pruning**: Uses attention scores to identify and retain most relevant content
-- **Parallel Processing**: Concurrent document processing and retrieval operations
-- **Token Optimization**: Smart token management for cost-effective LLM usage
+### Advanced Features
+- **Hierarchical Search**: Multi-level document organization and retrieval
+- **Citation Verification**: Automatic source verification and citation generation
+- **Answer Verification**: Quality assurance for generated responses
+- **Rate Limiting**: Intelligent API rate limiting and throttling
+- **Vector Quantization**: Optimized storage and retrieval of embeddings
+- **Evaluation Framework**: Built-in evaluation using RAGAS metrics
 
-### Developer Experience
-- **FastAPI REST API**: Clean, documented API endpoints for all operations
-- **Streamlit Web UI**: Interactive dashboard for easy system management
-- **A/B Testing Framework**: Built-in configuration comparison tools
-- **Comprehensive Monitoring**: Real-time performance metrics and analytics
-- **Error Handling**: Robust error handling with detailed feedback
-
-### Enterprise Features
-- **Corpus Management**: Create and manage multiple document collections
-- **Multi-Provider Embeddings**: Choose between Gemini, Vertex AI, or open-source models
-- **Access Control**: Corpus-level isolation for multi-tenant deployments
-- **Audit Logging**: Comprehensive query and operation logging
-- **High Availability**: Designed for production deployment with failover support
-- **Scalable Architecture**: Horizontally scalable with Kubernetes support
-
-## Quick Start
-
-### 1. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment
-
-Create a `.env` file:
-
-```env
-# Google Cloud Configuration
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
-
-# Embedding Configuration
-EMBEDDING_PROVIDER=gemini  # Options: gemini, vertex_ai, sentence_transformers
-GEMINI_EMBEDDING_MODEL=gemini-embedding-001
-GEMINI_OUTPUT_DIM=768
-
-# Rate Limiting
-RATE_LIMIT_TIER=free  # Options: free, tier_1, tier_2, tier_3
-EMBEDDING_BATCH_SIZE=10
-
-# Context Caching
-ENABLE_CONTEXT_CACHING=true
-CONTEXT_CACHE_TTL=3600
-
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Advanced Reranking
-ENABLE_COHERENCE_RERANKING=true
-ENABLE_DIVERSITY_RERANKING=true
-```
-
-### 3. Run the Enhanced Agent
-
-#### Option A: Run the Complete System (API + UI)
-
-1. **Start the FastAPI Backend:**
-```bash
-python main.py
-# Or with hot reload for development:
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-2. **Launch the Streamlit UI (in a new terminal):**
-```bash
-streamlit run rag_streamlit_ui.py
-```
-
-The UI will be available at `http://localhost:8501`
-
-#### Option B: API-Only Mode
-
-```bash
-python main.py
-```
-
-Access the API at `http://localhost:8000`
-- API Documentation: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-#### Option C: Use with ADK CLI (maintains compatibility)
-
-```bash
-adk web
-```
-
-## Streamlit UI Guide
-
-The Streamlit UI provides an intuitive interface for all RAG operations:
-
-### UI Features
-
-1. **Home Dashboard**
-   - System status overview
-   - Quick start guide
-   - Feature highlights
-   - Performance metrics
-
-2. **Query Interface**
-   - Natural language question input
-   - Advanced retrieval options
-   - Real-time results with confidence scores
-   - Performance metrics display
-   - Query history tracking
-
-3. **Corpus Management**
-   - Create new document collections
-   - Configure indexing strategies
-   - View corpus statistics
-   - Manage multiple corpora
-
-4. **Document Indexing**
-   - Batch document upload
-   - Support for GCS, Drive, and web URLs
-   - CSV batch import
-   - Processing progress tracking
-
-5. **A/B Testing**
-   - Compare different configurations
-   - Performance benchmarking
-   - Quality metrics comparison
-   - Configuration optimization
-
-6. **Cache Management**
-   - Cache performance monitoring
-   - Hit/miss rate statistics
-   - Cache invalidation controls
-   - Memory usage tracking
-
-7. **⚡ Rate Limits**
-   - Real-time API usage monitoring
-   - RPM/TPM/RPD utilization
-   - Tier information and limits
-   - Rate limit best practices
-
-8. **🗄️ Context Cache**
-   - Gemini API cache management
-   - Cost savings calculator
-   - TTL management
-   - Cache statistics
-
-9. **📈 Analytics Dashboard**
-   - Query volume trends
-   - Response time analytics
-   - Confidence score distribution
-   - System performance metrics
-
-### Using the UI
-
-1. **First Time Setup:**
-   - Navigate to the Home page
-   - Follow the Quick Start guide
-   - Create your first corpus
-   - Add documents
-   - Start querying!
-
-2. **Query Best Practices:**
-   - Use natural language questions
-   - Experiment with retrieval strategies
-   - Monitor confidence scores
-   - Check performance metrics
-
-3. **Performance Tuning:**
-   - Use A/B testing to find optimal settings
-   - Monitor cache hit rates
-   - Adjust chunk sizes based on your content
-   - Enable/disable features based on needs
-
-## API Endpoints
-
-### Core Operations
-
-#### Health Check
-```bash
-GET http://localhost:8000/health
-```
-
-#### Create Corpus
-```bash
-POST http://localhost:8000/corpus
-{
-    "name": "my-corpus",
-    "description": "Technical documentation",
-    "indexing_strategy": "hybrid",
-    "chunk_size": 512,
-    "enable_colbert": true,
-    "embedding_provider": "gemini",
-    "enable_context_cache": true,
-    "cache_ttl_seconds": 3600
-}
-```
-
-#### Add Documents
-```bash
-POST http://localhost:8000/corpus/{corpus_id}/documents
-{
-    "uris": ["gs://bucket/doc1.pdf", "gs://bucket/doc2.pdf"],
-    "use_layout_parser": true,
-    "enable_late_chunking": true
-}
-```
-
-#### Query Documents
-```bash
-POST http://localhost:8000/query
-{
-    "query": "What is machine learning?",
-    "corpus_id": "corpus_123",
-    "top_k": 10,
-    "retrieval_strategy": "hybrid",
-    "alpha": 0.5,
-    "enable_pruning": true,
-    "max_context_tokens": 8192
-}
-```
-
-### Advanced Operations
-
-#### Get Corpus Statistics
-```bash
-GET http://localhost:8000/corpus/{corpus_id}/stats
-```
-
-#### Cache Management
-```bash
-# Get cache statistics
-GET http://localhost:8000/cache/stats
-
-# Invalidate cache for a corpus
-POST http://localhost:8000/cache/invalidate/{corpus_id}
-```
-
-#### A/B Test Configurations
-```bash
-POST http://localhost:8000/evaluate
-{
-    "test_queries": ["query1", "query2"],
-    "corpus_id": "corpus_123",
-    "config_a": {"retrieval_strategy": "dense"},
-    "config_b": {"retrieval_strategy": "hybrid"}
-}
-```
+### Integration Features
+- **Multiple Vector Stores**: Support for LanceDB, Qdrant, ChromaDB, and FAISS
+- **Cloud Integration**: Google Cloud AI Platform and Document AI support
+- **API Server**: RESTful API with FastAPI backend
+- **React Frontend**: Modern web interface for document management and querying
+- **Docker Support**: Containerized deployment with Docker Compose
 
 ## Architecture
 
-```
-enhanced-vertex-rag/
-├── rag_agent/
-│   ├── agents/              # Agent orchestration layer
-│   │   └── root_agent.py    # Main orchestrator with sub-agents
-│   ├── core/                # Core RAG functionality
-│   │   ├── indexing.py      # Hybrid indexing (FAISS + TF-IDF)
-│   │   ├── retrieval.py     # Multi-strategy retrieval engine
-│   │   ├── document_processor.py # Smart document processing
-│   │   ├── embeddings.py    # Multi-provider embedding support
-│   │   ├── reranking.py     # Advanced reranking algorithms
-│   │   ├── context_cache.py # Gemini context caching
-│   │   └── rate_limiter.py  # API rate limit management
-│   ├── optimization/        # Performance optimization
-│   │   ├── caching.py       # Redis + LRU caching
-│   │   └── context_pruning.py # Token optimization
-│   ├── tools/              # ADK-compatible tools
-│   └── config.py           # Configuration management
-├── main.py                 # FastAPI application
-├── rag_streamlit_ui.py     # Streamlit web interface
-├── docs/                   # Documentation
-│   ├── embedding_configuration.md
-│   ├── context_caching_guide.md
-│   └── advanced_reranking.md
-└── requirements.txt        # Python dependencies
+```mermaid
+flowchart TB
+    subgraph "Frontend Layer"
+        React[React Frontend]
+        Dashboard[RAG Dashboard]
+        Uploader[Document Uploader]
+        Query[Query Interface]
+    end
+    
+    subgraph "API Layer"
+        FastAPI[FastAPI Server]
+        Router[Query Router]
+        RateLimit[Rate Limiter]
+    end
+    
+    subgraph "Core RAG Engine"
+        Agent[RAG Agent]
+        Processor[Document Processor]
+        Embeddings[Embedding Engine]
+        Retriever[Hierarchical Retriever]
+        Reranker[Advanced Reranker]
+        Generator[Response Generator]
+    end
+    
+    subgraph "Storage & Cache"
+        VectorDB[(Vector Database)]
+        Cache[(Semantic Cache)]
+        Context[(Context Cache)]
+        Session[(Session Store)]
+    end
+    
+    subgraph "External Services"
+        LLM[Language Models]
+        Cloud[Google Cloud AI]
+        DocAI[Document AI]
+    end
+    
+    React --> FastAPI
+    FastAPI --> Agent
+    Agent --> Processor
+    Agent --> Retriever
+    Processor --> Embeddings
+    Retriever --> VectorDB
+    Retriever --> Reranker
+    Reranker --> Generator
+    Generator --> LLM
+    Agent --> Cache
+    Agent --> Session
+    Processor --> Cloud
+    Processor --> DocAI
 ```
 
 ### System Components
 
-1. **Agent Layer**: Orchestrates sub-agents for indexing, retrieval, and generation
-2. **Core Engine**: Implements hybrid search, ColBERT, and document processing
-3. **Optimization Layer**: Handles caching, pruning, and performance tuning
-4. **API Layer**: FastAPI endpoints for all operations
-5. **UI Layer**: Streamlit dashboard for user interaction
+1. **Frontend Layer**: React-based web interface for user interactions
+2. **API Layer**: FastAPI-powered RESTful service with authentication and rate limiting
+3. **RAG Engine**: Core processing pipeline with advanced retrieval and generation
+4. **Storage Layer**: Multiple vector database options with intelligent caching
+5. **External Integrations**: Cloud AI services and language model providers
 
-## Configuration Options
+## Project Structure
 
-Configure the system via environment variables or `rag_agent/config.py`:
+```
+RAG-ADK/
+├── 📁 frontend/                    # React frontend application
+│   ├── 📁 src/
+│   │   ├── 📁 components/         # React components
+│   │   │   ├── CorpusManager.tsx
+│   │   │   ├── DocumentUploader.tsx
+│   │   │   ├── QueryInterface.tsx
+│   │   │   └── RAGDashboard.tsx
+│   │   ├── 📁 services/           # API service layer
+│   │   └── 📁 types/              # TypeScript type definitions
+│   └── package.json
+├── 📁 rag_agent/                  # Core RAG engine
+│   ├── 📁 agents/                 # Agent implementations
+│   │   └── root_agent.py
+│   ├── 📁 core/                   # Core RAG components
+│   │   ├── answer_verifier.py
+│   │   ├── cache_manager.py
+│   │   ├── citation_verification.py
+│   │   ├── colbert_retrieval.py
+│   │   ├── context_cache.py
+│   │   ├── document_processor.py
+│   │   ├── embeddings.py
+│   │   ├── hierarchical_search.py
+│   │   ├── indexing.py
+│   │   ├── local_rag_store.py
+│   │   ├── multihop_retrieval.py
+│   │   ├── multimodal_processor.py
+│   │   ├── query_decomposer.py
+│   │   ├── query_rewriter.py
+│   │   ├── query_router.py
+│   │   ├── ragas_evaluation.py
+│   │   ├── rate_limiter.py
+│   │   ├── reranking.py
+│   │   ├── retrieval.py
+│   │   ├── semantic_cache.py
+│   │   ├── semantic_chunker.py
+│   │   ├── session_manager.py
+│   │   └── vector_quantization.py
+│   ├── 📁 optimization/           # Performance optimizations
+│   │   ├── caching.py
+│   │   └── context_pruning.py
+│   └── 📁 tools/                  # Utility tools
+│       ├── add_data.py
+│       ├── create_corpus.py
+│       ├── delete_corpus.py
+│       ├── get_corpus_info.py
+│       ├── list_corpora.py
+│       └── rag_query.py
+├── 📁 docs/                       # Documentation
+│   ├── advanced_reranking.md
+│   ├── context_caching_guide.md
+│   └── embedding_configuration.md
+├── 📁 examples/                   # Usage examples
+│   └── optimized_rag_example.py
+├── api_server.py                  # FastAPI server
+├── main.py                        # Main application entry
+├── enhanced_lancedb_config.py     # Database configuration
+├── docker-compose.yml             # Docker deployment
+├── requirements.txt               # Python dependencies
+└── README.md                      # Project documentation
+```
 
-### Indexing Configuration
-- `INDEXING_STRATEGY`: Choose from "dense", "sparse", or "hybrid" (default: "hybrid")
-- `CHUNK_SIZE`: Token size for document chunks (default: 512)
-- `CHUNK_OVERLAP`: Overlap between chunks (default: 64)
-- `ENABLE_COLBERT`: Enable ColBERT embeddings (default: true)
-- `ENABLE_LATE_CHUNKING`: Preserve context during chunking (default: true)
+## Installation & Setup
 
-### Retrieval Configuration
-- `TOP_K_RETRIEVAL`: Number of chunks to retrieve (default: 10)
-- `ENABLE_RERANKING`: Use semantic reranker (default: true)
-- `SIMILARITY_THRESHOLD`: Minimum similarity score (default: 0.7)
-- `HYBRID_ALPHA`: Balance between dense/sparse (default: 0.5)
+### Prerequisites
 
-### Performance Configuration
-- `ENABLE_CACHING`: Enable Redis caching (default: true)
-- `ENABLE_CONTEXT_PRUNING`: Enable token reduction (default: true)
-- `MAX_CONTEXT_TOKENS`: Maximum context size (default: 8192)
-- `CACHE_TTL`: Cache time-to-live in seconds (default: 3600)
+- Python 3.8+
+- Node.js 16+ (for frontend)
+- Docker & Docker Compose (optional)
+- GPU support recommended for optimal performance
 
-### Model Configuration
-- `EMBEDDING_MODEL`: Text embedding model (default: "text-embedding-005")
-- `GENERATION_MODEL`: LLM for generation (default: "gemini-2.0-flash")
-- `RERANKING_MODEL`: Reranking model (default: "semantic-ranker-512@latest")
+### Quick Start
 
-## Performance Benchmarks
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/vedantparmar12/RAG-ADK.git
+   cd RAG-ADK
+   ```
 
-Based on extensive testing with technical documentation:
+2. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-| Metric | Traditional RAG | Enhanced RAG | Improvement |
-|--------|----------------|--------------|-------------|
-| **Retrieval Accuracy** | 72% | 95% | +32% |
-| **Response Time** | 2.5s | 0.8s | 3x faster |
-| **Context Size** | 16k tokens | 3.2k tokens | 80% reduction |
-| **Cache Hit Rate** | N/A | 85% | - |
-| **Query Latency (cached)** | N/A | <100ms | - |
+3. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
 
-### Key Performance Insights
-- **Hybrid Search**: Combines the best of semantic and keyword matching
-- **Context Pruning**: Reduces costs while maintaining answer quality
-- **Intelligent Caching**: Dramatically improves response times for common queries
-- **ColBERT Retrieval**: Provides fine-grained matching for complex queries
+4. **Start the backend:**
+   ```bash
+   python main.py
+   ```
 
-## Deployment
+5. **Install and start frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm start
+   ```
 
 ### Docker Deployment
 
-1. **Create a Dockerfile:**
-```dockerfile
-FROM python:3.13-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Expose ports
-EXPOSE 8000 8501
-
-# Create startup script
-RUN echo '#!/bin/bash\n\
-uvicorn main:app --host 0.0.0.0 --port 8000 &\n\
-streamlit run rag_streamlit_ui.py --server.port 8501 --server.address 0.0.0.0\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
-CMD ["/app/start.sh"]
+```bash
+docker-compose up -d
 ```
 
-2. **Build and Run:**
+This will start:
+- Backend API server (port 8000)
+- Frontend application (port 3000)
+- Vector database services
+- Caching layer
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file with the following configuration:
+
+```env
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+DEBUG_MODE=false
+
+# Database Configuration
+VECTOR_DB_TYPE=lancedb
+LANCEDB_PATH=./vector_db
+QDRANT_URL=http://localhost:6333
+CHROMADB_PATH=./chroma_db
+
+# AI Model Configuration
+OPENAI_API_KEY=your_openai_key
+GOOGLE_API_KEY=your_google_key
+HUGGINGFACE_API_KEY=your_hf_key
+
+# Embedding Models
+DEFAULT_EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
+MULTIMODAL_EMBEDDING_MODEL=clip-ViT-B-32
+
+# Cache Configuration
+REDIS_URL=redis://localhost:6379
+CACHE_TTL=3600
+ENABLE_SEMANTIC_CACHE=true
+
+# Performance Settings
+MAX_CONCURRENT_REQUESTS=10
+BATCH_SIZE=32
+CHUNK_SIZE=512
+OVERLAP_SIZE=50
+```
+
+### Advanced Configuration
+
+For detailed configuration options, see the configuration files:
+- `enhanced_lancedb_config.py` - Vector database settings
+- `rag_agent/config.py` - Core RAG configuration
+
+## Core Components
+
+### 1. Document Processor
+Handles multi-format document ingestion and preprocessing:
+
+```python
+from rag_agent.core.document_processor import DocumentProcessor
+
+processor = DocumentProcessor()
+documents = processor.process_files(file_paths=['doc1.pdf', 'doc2.txt'])
+```
+
+### 2. Embedding Engine
+Generates and manages vector embeddings:
+
+```python
+from rag_agent.core.embeddings import EmbeddingManager
+
+embeddings = EmbeddingManager(model_name="all-mpnet-base-v2")
+vectors = embeddings.encode(texts)
+```
+
+### 3. Hierarchical Retriever
+Advanced multi-level document retrieval:
+
+```python
+from rag_agent.core.hierarchical_search import HierarchicalSearchEngine
+
+search_engine = HierarchicalSearchEngine()
+results = search_engine.search(query, num_results=10)
+```
+
+### 4. Semantic Cache
+Intelligent caching system:
+
+```python
+from rag_agent.core.semantic_cache import SemanticCache
+
+cache = SemanticCache()
+cached_result = cache.get(query)
+if not cached_result:
+    result = generate_response(query)
+    cache.set(query, result)
+```
+
+### 5. Advanced Reranker
+Multiple reranking strategies:
+
+```python
+from rag_agent.core.reranking import AdvancedReranker
+
+reranker = AdvancedReranker(strategy="colbert")
+reranked_results = reranker.rerank(query, retrieved_docs)
+```
+
+## API Reference
+
+### REST Endpoints
+
+#### Document Management
+
+**POST /api/upload**
+- Upload and process documents
+- Parameters: `files`, `corpus_name`
+- Returns: `{"status": "success", "processed_count": N}`
+
+**GET /api/corpora**
+- List all available document corpora
+- Returns: `{"corpora": [...]}`
+
+**DELETE /api/corpus/{corpus_name}**
+- Delete a document corpus
+- Returns: `{"status": "deleted"}`
+
+#### Query Operations
+
+**POST /api/query**
+- Perform RAG query
+- Parameters: `query`, `corpus_name`, `num_results`
+- Returns: `{"answer": "...", "sources": [...], "confidence": 0.95}`
+
+**POST /api/query/advanced**
+- Advanced query with custom parameters
+- Parameters: `query`, `retrieval_strategy`, `reranking_method`
+- Returns: Enhanced response with metadata
+
+#### System Operations
+
+**GET /api/health**
+- System health check
+- Returns: `{"status": "healthy", "version": "1.0.0"}`
+
+**GET /api/stats**
+- System statistics
+- Returns: Document counts, cache statistics, performance metrics
+
+### Python SDK
+
+```python
+from rag_agent import RAGAgent
+
+# Initialize agent
+agent = RAGAgent(config_path="config.yaml")
+
+# Add documents
+agent.add_documents(corpus_name="knowledge_base", files=["doc1.pdf"])
+
+# Query
+result = agent.query("What is machine learning?", corpus_name="knowledge_base")
+print(result.answer)
+print(result.sources)
+```
+
+## Frontend Interface
+
+### Components Overview
+
+1. **RAG Dashboard** (`RAGDashboard.tsx`)
+   - Main application dashboard
+   - System overview and statistics
+   - Navigation to other components
+
+2. **Document Uploader** (`DocumentUploader.tsx`)
+   - Drag-and-drop file upload
+   - Batch processing support
+   - Progress tracking and status updates
+
+3. **Corpus Manager** (`CorpusManager.tsx`)
+   - Create, view, and manage document collections
+   - Corpus statistics and metadata
+   - Document organization tools
+
+4. **Query Interface** (`QueryInterface.tsx`)
+   - Interactive query submission
+   - Real-time response generation
+   - Source citation and verification
+
+### Usage Examples
+
+#### Basic Query
+```typescript
+const query = "What are the benefits of renewable energy?";
+const response = await ragService.query({
+  query,
+  corpusName: "environmental_docs",
+  numResults: 5
+});
+```
+
+#### Document Upload
+```typescript
+const files = [file1, file2, file3];
+const result = await ragService.uploadDocuments({
+  files,
+  corpusName: "new_corpus"
+});
+```
+
+## Examples & Usage
+
+### Basic RAG Pipeline
+
+```python
+from rag_agent import RAGAgent
+from rag_agent.core.document_processor import DocumentProcessor
+
+# Initialize components
+agent = RAGAgent()
+processor = DocumentProcessor()
+
+# Process documents
+documents = processor.process_files([
+    "research_paper.pdf",
+    "technical_manual.docx",
+    "knowledge_base.txt"
+])
+
+# Create corpus
+corpus_id = agent.create_corpus(
+    name="technical_knowledge",
+    documents=documents
+)
+
+# Query the system
+result = agent.query(
+    query="Explain the technical specifications",
+    corpus_name="technical_knowledge",
+    num_results=5
+)
+
+print(f"Answer: {result.answer}")
+print(f"Sources: {[source.filename for source in result.sources]}")
+print(f"Confidence: {result.confidence}")
+```
+
+### Advanced Query with Custom Configuration
+
+```python
+from rag_agent.agents.root_agent import RootAgent
+from rag_agent.core.reranking import RerankingStrategy
+
+# Initialize with custom configuration
+agent = RootAgent(config={
+    "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+    "reranking_strategy": RerankingStrategy.COLBERT,
+    "max_results": 10,
+    "similarity_threshold": 0.7
+})
+
+# Advanced query
+result = agent.advanced_query(
+    query="Compare machine learning algorithms for time series",
+    corpus_name="ml_research",
+    query_expansion=True,
+    multi_hop_retrieval=True,
+    enable_citation_verification=True
+)
+
+# Access detailed results
+print(f"Main Answer: {result.primary_answer}")
+print(f"Related Topics: {result.related_queries}")
+print(f"Verified Citations: {result.verified_sources}")
+```
+
+### Multi-Modal Processing
+
+```python
+from rag_agent.core.multimodal_processor import MultiModalProcessor
+
+# Process mixed content
+processor = MultiModalProcessor()
+mixed_documents = processor.process_multimodal_batch([
+    {"type": "pdf", "path": "report.pdf"},
+    {"type": "image", "path": "chart.png", "caption": "Sales data"},
+    {"type": "text", "content": "Additional context..."}
+])
+
+# Query with multi-modal context
+result = agent.query(
+    query="What does the sales chart show?",
+    corpus_name="business_data",
+    include_visual_context=True
+)
+```
+
+## Optimization Features
+
+### Performance Optimizations
+
+1. **Context Caching**
+   - Semantic-aware response caching
+   - TTL-based cache expiration
+   - Memory-efficient storage
+
+2. **Vector Quantization**
+   - Reduced memory footprint
+   - Faster similarity search
+   - Configurable precision trade-offs
+
+3. **Batch Processing**
+   - Efficient document processing
+   - Parallel embedding generation
+   - Optimized I/O operations
+
+4. **Query Optimization**
+   - Query rewriting and expansion
+   - Intelligent routing
+   - Result deduplication
+
+### Configuration Examples
+
+```python
+# Enable optimizations
+config = {
+    "cache": {
+        "enabled": True,
+        "semantic_similarity_threshold": 0.85,
+        "max_cache_size": "1GB"
+    },
+    "quantization": {
+        "enabled": True,
+        "precision": "int8",
+        "compression_ratio": 0.25
+    },
+    "batch_processing": {
+        "batch_size": 32,
+        "max_workers": 4,
+        "memory_limit": "2GB"
+    }
+}
+
+agent = RAGAgent(optimization_config=config)
+```
+
+## Testing
+
+### Running Tests
+
 ```bash
-docker build -t rag-agent .
-docker run -p 8000:8000 -p 8501:8501 rag-agent
+# Run all tests
+python -m pytest
+
+# Run specific test categories
+python -m pytest tests/unit/
+python -m pytest tests/integration/
+python -m pytest tests/performance/
+
+# Run with coverage
+python -m pytest --cov=rag_agent
+```
+
+### Test Files
+
+- `test_setup.py` - Basic setup and configuration tests
+- `test_optimizations.py` - Performance optimization tests
+- Custom test suites for each component
+
+### Evaluation Framework
+
+```python
+from rag_agent.core.ragas_evaluation import RAGASEvaluator
+
+# Initialize evaluator
+evaluator = RAGASEvaluator()
+
+# Evaluate system performance
+metrics = evaluator.evaluate(
+    queries=test_queries,
+    ground_truths=expected_answers,
+    contexts=retrieved_contexts
+)
+
+print(f"Faithfulness: {metrics.faithfulness}")
+print(f"Answer Relevancy: {metrics.answer_relevancy}")
+print(f"Context Precision: {metrics.context_precision}")
+```
+
+## Deployment
+
+### Production Deployment
+
+1. **Environment Setup**
+   ```bash
+   # Production environment
+   export ENVIRONMENT=production
+   export DEBUG_MODE=false
+   export LOG_LEVEL=info
+   ```
+
+2. **Database Configuration**
+   ```bash
+   # Use production vector database
+   export VECTOR_DB_TYPE=qdrant
+   export QDRANT_URL=https://your-qdrant-cluster.com
+   ```
+
+3. **Scaling Configuration**
+   ```bash
+   # Performance tuning
+   export MAX_WORKERS=8
+   export BATCH_SIZE=64
+   export CACHE_SIZE=2GB
+   ```
+
+### Docker Production Setup
+
+```yaml
+version: '3.8'
+services:
+  rag-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - qdrant
+    
+  rag-frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - rag-api
+      
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+      
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
 ```
 
 ### Kubernetes Deployment
@@ -418,115 +687,110 @@ docker run -p 8000:8000 -p 8501:8501 rag-agent
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rag-agent
+  name: rag-adk
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: rag-agent
+      app: rag-adk
   template:
     metadata:
       labels:
-        app: rag-agent
+        app: rag-adk
     spec:
       containers:
       - name: rag-api
-        image: rag-agent:latest
-        command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+        image: rag-adk:latest
         ports:
         - containerPort: 8000
         env:
-        - name: GOOGLE_CLOUD_PROJECT
-          valueFrom:
-            secretKeyRef:
-              name: gcp-credentials
-              key: project-id
-      - name: rag-ui
-        image: rag-agent:latest
-        command: ["streamlit", "run", "rag_streamlit_ui.py"]
-        ports:
-        - containerPort: 8501
+        - name: REDIS_URL
+          value: "redis://redis-service:6379"
 ```
 
-### Production Considerations
+## Dependencies
 
-1. **Redis Setup**: Deploy Redis separately for production caching
-2. **Load Balancing**: Use a load balancer for multiple API instances
-3. **Monitoring**: Integrate with Prometheus/Grafana for metrics
-4. **Security**: Add authentication/authorization layers
-5. **Scaling**: Use horizontal pod autoscaling based on load
+### Core Dependencies
 
-## Troubleshooting
+**Python Backend:**
+- `fastapi` - Web framework for API development
+- `uvicorn` - ASGI server for production deployment
+- `pydantic` - Data validation and settings management
+- `transformers[torch]` - Transformer models and tokenizers
+- `sentence-transformers` - Sentence embedding models
+- `torch` - PyTorch deep learning framework
 
-### Common Issues and Solutions
+**Vector Databases:**
+- `qdrant-client` - Qdrant vector database client
+- `chromadb` - ChromaDB vector database
+- `faiss-cpu/faiss-gpu` - Facebook AI Similarity Search
+- Custom LanceDB integration
 
-#### Redis Connection Issues
-```bash
-# Check Redis status
-redis-cli ping
+**AI/ML Libraries:**
+- `google-generativeai` - Google Gemini API integration
+- `google-genai` - Google AI Platform client
+- `langchain` - LLM application framework
+- `ragas` - RAG evaluation framework
+- `colbert-ai` - ColBERT retrieval models
 
-# Start Redis if not running
-redis-server --daemonize yes
+**Optimization:**
+- `redis` - Caching and session storage
+- `prometheus-client` - Metrics and monitoring
+- `accelerate` - Model acceleration
+- `quantize-embeddings` - Vector quantization
 
-# Alternative: Use Docker
-docker run -d -p 6379:6379 redis:alpine
-```
+**Frontend (Node.js):**
+- `react` - Frontend framework
+- `typescript` - Type-safe JavaScript
+- `@types/react` - TypeScript definitions
+- Additional React ecosystem packages
 
-#### Model Loading Errors
-- **Issue**: Models fail to download
-- **Solution**: Check internet connectivity and Google Cloud credentials
-- **Workaround**: Pre-download models or use offline mode
-
-#### Memory Issues
-- **Issue**: Out of memory errors with large documents
-- **Solution**: Adjust chunk_size and batch_size in configuration
-- **Monitor**: Use `htop` or container metrics to track memory usage
-
-#### API Connection Errors
-- **Issue**: UI cannot connect to API
-- **Solution**: 
-  ```bash
-  # Check if API is running
-  curl http://localhost:8000/health
-  
-  # Check firewall rules
-  sudo ufw allow 8000
-  ```
-
-### Performance Optimization Tips
-
-1. **Enable all caching layers**: Redis + in-memory
-2. **Tune chunk sizes**: Smaller chunks = better precision, larger chunks = better context
-3. **Use hybrid search**: Best balance of speed and accuracy
-4. **Enable context pruning**: Reduces token usage significantly
-5. **Monitor metrics**: Use the analytics dashboard to identify bottlenecks
+### Security Dependencies
+- Rate limiting libraries
+- Input validation frameworks
+- Secure configuration management
 
 ## Contributing
 
-We welcome contributions! The modular architecture makes it easy to add new features:
-
-1. **Add new retrieval strategies**: Extend `rag_agent/core/retrieval.py`
-2. **Implement new chunking methods**: Modify `rag_agent/core/document_processor.py`
-3. **Add UI features**: Enhance `rag_streamlit_ui.py`
-4. **Improve caching**: Extend `rag_agent/optimization/caching.py`
-
 ### Development Setup
 
-```bash
-# Clone the repository
-git clone https://github.com/vedantparmar12/RAG-ADK.git
-cd adk-rag-agent-main
+1. **Fork and clone the repository**
+2. **Create a virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-# Install in development mode
-pip install -e .
+3. **Install development dependencies:**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
 
-# Run tests
-python -m pytest
+4. **Run tests to ensure everything works:**
+   ```bash
+   python -m pytest
+   ```
 
-# Run with hot reload
-uvicorn main:app --reload
-```
+### Contribution Guidelines
+
+- Follow PEP 8 style guidelines
+- Add tests for new functionality
+- Update documentation for API changes
+- Submit pull requests with clear descriptions
+- Ensure all tests pass before submission
+
+### Code Structure
+
+- **Core Logic**: `rag_agent/core/`
+- **API Endpoints**: `api_server.py`
+- **Frontend Components**: `frontend/src/components/`
+- **Tests**: `tests/`
+- **Documentation**: `docs/`
 
 ## License
 
-This project extends the Google ADK framework and is subject to its licensing terms.
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+---
+
+**RAG-ADK** provides a comprehensive, production-ready solution for building advanced retrieval-augmented generation applications. With its modular architecture, extensive feature set, and optimization capabilities, it serves as an ideal foundation for enterprise-grade AI-powered document processing and question-answering systems.
